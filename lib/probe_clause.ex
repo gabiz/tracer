@@ -1,0 +1,96 @@
+defmodule ETrace.Probe.Clause do
+  @moduledoc """
+  Manages a Probe's clause
+  """
+  alias __MODULE__
+
+  @valid_flags [:global, :local, :meta, :call_count, :call_time]
+
+  defstruct type: nil,
+            mfa: nil,
+            match_specs: [],
+            flags: [],
+            matches: 0
+
+  def new do
+    %Clause{}
+  end
+
+  def get_type(clause) do
+    clause.type
+  end
+
+  def set_flags(clause, flags) do
+    with :ok <- valid_flags?(flags) do
+      put_in(clause.flags, flags)
+    end
+  end
+
+  def get_flags(clause) do
+    clause.flags
+  end
+
+  def put_mfa(clause, m \\ :_, f \\ :_, a \\ :_)
+  def put_mfa(clause, m, f, a)
+      when is_atom(m) and is_atom(f) and (is_atom(a) or is_integer(a)) do
+    clause
+    |> Map.put(:mfa, {m, f, a})
+    |> Map.put(:type, :call)
+  end
+  def put_mfa(_clause, _, _, _) do
+    {:error, :invalid_mfa}
+  end
+
+  def get_mfa(clause) do
+    clause.mfa
+  end
+
+  def matches(clause) do
+    clause.matches
+  end
+
+  def valid?(clause) do
+    with :ok <- validate_mfa(clause) do
+      :ok
+    end
+  end
+
+  def apply(clause, not_remove \\ true) do
+    with :ok <- valid?(clause) do
+      res = :erlang.trace_pattern(clause.mfa,
+                                  not_remove && clause.match_specs,
+                                  clause.flags)
+      if not_remove == false do
+        put_in(clause.matches, 0)
+      else
+        if is_integer(res), do: put_in(clause.matches, res), else: clause
+      end
+    end
+  end
+
+  defp validate_mfa(clause) do
+    case clause.mfa do
+      nil -> {:error, :missing_mfa}
+      {m, f, a}
+        when is_atom(m) and is_atom(f) and (is_atom(a) or is_integer(a)) -> :ok
+      _ -> {:error, :invalid_mfa}
+    end
+  end
+
+  def valid_flags?(flags) when is_list(flags) do
+    with [] <- Enum.reduce(flags, [], fn f, acc ->
+      if valid_flag?(f), do: acc, else: [{:invalid_clause_flag, f} | acc]
+    end) do
+      :ok
+    else
+      error_list -> {:error, error_list}
+    end
+  end
+  def valid_flags?(flag) do
+    if valid_flag?(flag), do: :ok, else: {:error, :invalid_clause_flag}
+  end
+
+  defp valid_flag?(flag) do
+    Enum.member?(@valid_flags, flag)
+  end
+end
