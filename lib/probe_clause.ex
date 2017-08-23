@@ -3,6 +3,7 @@ defmodule ETrace.Probe.Clause do
   Manages a Probe's clause
   """
   alias __MODULE__
+  require ETrace.Matcher
 
   @valid_flags [:global, :local, :meta, :call_count, :call_time]
 
@@ -43,6 +44,14 @@ defmodule ETrace.Probe.Clause do
 
   def get_mfa(clause) do
     clause.mfa
+  end
+
+  def add_matcher(clause, matcher) do
+    put_in(clause.match_specs, matcher ++ clause.match_specs)
+  end
+
+  def filter(clause, [by: matcher]) do
+    put_in(clause.match_specs, matcher ++ clause.match_specs)
   end
 
   def matches(clause) do

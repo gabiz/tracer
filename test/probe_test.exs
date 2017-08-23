@@ -91,4 +91,12 @@ defmodule ETrace.Probe.Test do
     assert Probe.valid?(probe) == {:error, :missing_processes}
   end
 
+  test "arity enables or disables arity flag" do
+    probe = Probe.new(type: :call)
+      |> Probe.arity(false)
+    refute Enum.member?(probe.flags, :arity)
+    probe = Probe.arity(probe, true)
+    assert Enum.member?(probe.flags, :arity)
+  end
+
 end

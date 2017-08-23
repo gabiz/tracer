@@ -43,10 +43,12 @@ defmodule ETrace.Matcher do
 
   Enum.map(@body_trace_functions, fn({atom, arity}) ->
     defp is_trace_function(unquote(atom)), do: true
-    defp trace_function_arity?(unquote(atom), val) do
-      if is_list(unquote(arity)) do
+    if is_list(arity) do
+      defp trace_function_arity?(unquote(atom), val) do
         Enum.member?(unquote(arity), val)
-      else
+      end
+    else
+      defp trace_function_arity?(unquote(atom), val) do
         unquote(arity) == val
       end
     end
@@ -59,7 +61,6 @@ defmodule ETrace.Matcher do
   defp map_elixir_erlang(atom), do: atom
 
   defmacro match([do: clauses]) do
-    IO.puts "Clauses = #{inspect clauses}"
     outer_vars = __CALLER__.vars
     clauses
     |> Enum.map(fn({:->, _, clause}) ->
@@ -81,8 +82,6 @@ defmodule ETrace.Matcher do
   end
 
   defp translate_clause([head, body], outer_vars) do
-    IO.puts "Before Head = #{inspect head}"
-    IO.puts "Before Body = #{inspect body} outer_vars = #{inspect outer_vars}"
     {head, conds, state} = translate_head(head, outer_vars)
 
     body = translate_body(body, state)
@@ -106,7 +105,6 @@ defmodule ETrace.Matcher do
   end
 
   # Translate Body
-
   defp translate_body({:__block__, _, exprs}, state) when is_list(exprs) do
     body = Enum.map(exprs, &translate_body_term(&1, state))
     if many_messages?(body) do
@@ -129,7 +127,7 @@ defmodule ETrace.Matcher do
 
   defp translate_body_term({var, _, nil}, state) when is_atom(var) do
     if match_var = state.vars[var] do
-      if annotating?(state), do: {var, :"#{match_var}"}, else: :"#{match_var}"
+      if annotating?(state), do: [var, :"#{match_var}"], else: :"#{match_var}"
     else
       raise ArgumentError, message: "variable `#{var}` is unbound in matchspec"
     end
@@ -188,7 +186,7 @@ defmodule ETrace.Matcher do
                                                     |> increase_depth()
                                                     ))
           match_fun = map_elixir_erlang(fun)
-          {:message, [{:_cmd, match_fun} | match_args]}
+          {:message, [[:_cmd, match_fun] | match_args]}
         else
           raise ArgumentError, message: "`#{fun}` cannot be nested"
         end
@@ -259,6 +257,7 @@ defmodule ETrace.Matcher do
 
   defp translate_cond(_, _state), do: raise_expression_error()
 
+  # Translate Head
   defp translate_head([{:when, _, params}], outer_vars)
       when is_list(params) and length(params) > 1 do
     {param, condition} = Enum.split(params, -1)
@@ -275,12 +274,9 @@ defmodule ETrace.Matcher do
     {[], [], %{vars: [], count: 0, outer_vars: outer_vars}}
   end
   defp translate_head(param, outer_vars) when is_list(param) do
-
     initial_state = %{vars: [], count: 0, outer_vars: outer_vars}
     {head, state} = do_translate_param(param, initial_state)
 
-    # {head, state} = translate_param(param, outer_vars)
-    # IO.puts "head = #{inspect head } state = #{inspect state}"
     {head, [], state}
   end
 

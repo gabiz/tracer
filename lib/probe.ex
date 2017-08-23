@@ -18,7 +18,8 @@ defmodule ETrace.Probe do
   defstruct type: nil,
             process_list: [],
             clauses: [],
-            enabled?: true
+            enabled?: true,
+            flags: [:arity, :timestamp]
 
   def new(opts) when is_list(opts) do
     case Keyword.fetch(opts, :type) do
@@ -130,8 +131,21 @@ defmodule ETrace.Probe do
     end
   end
 
+  [:arity, :timestamp] |> Enum.each(fn flag ->
+    def unquote(flag)(probe, enable) when is_boolean(enable) do
+      flag(probe, unquote(flag), enable)
+    end
+  end)
+
+  defp flag(probe, flag, true) do
+    put_in(probe.flags, Enum.uniq([flag | probe.flags]))
+  end
+  defp flag(probe, flag, false) do
+    put_in(probe.flags, probe.flags -- [flag])
+  end
+
   defp flags(probe) do
-    [Map.get(@flag_map, probe.type)]
+    [Map.get(@flag_map, probe.type) | probe.flags]
   end
 
   defp valid_type?(type) do

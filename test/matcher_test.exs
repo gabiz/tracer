@@ -69,14 +69,15 @@ defmodule ETrace.Matcher.Test do
     ms = match do (a, b, c) -> message(a, b, c) end
     assert ms == [{[:"$1", :"$2", :"$3"],
                   [],
-                  [{:message, [a: :"$1", b: :"$2", c: :"$3"]}] }]
+                  [{:message, [[:a, :"$1"], [:b, :"$2"], [:c, :"$3"]]}] }]
   end
 
   test "body with count including bindings" do
     ms = match do (a, b, c) -> count(a, b, c) end
     assert ms == [{[:"$1", :"$2", :"$3"],
                   [],
-                  [{:message, [_cmd: :count, a: :"$1", b: :"$2", c: :"$3"]}] }]
+                  [{:message,
+                  [[:_cmd, :count], [:a, :"$1"], [:b, :"$2"], [:c, :"$3"]]}] }]
   end
 
 end
