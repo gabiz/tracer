@@ -15,6 +15,10 @@ defmodule ETrace.Probe do
     receive: :receive
   }
 
+  @new_options [
+    :type, :in_process, :with_fun, :filter_by
+  ]
+
   defstruct type: nil,
             process_list: [],
             clauses: [],
@@ -22,12 +26,18 @@ defmodule ETrace.Probe do
             flags: [:arity, :timestamp]
 
   def new(opts) when is_list(opts) do
-    case Keyword.fetch(opts, :type) do
-      :error -> {:error, :missing_type}
-      {:ok, type} ->
-        with {:ok, type} <- valid_type?(type) do
-          %Probe{type: type}
+    if Keyword.fetch(opts, :type) != :error do
+      Enum.reduce(opts, %Probe{}, fn {field, val}, probe ->
+        cond do
+          is_tuple(probe) and elem(probe, 0) == :error -> probe
+          !Enum.member?(@new_options, field) ->
+            {:error, "#{field} not a valid option"}
+          true ->
+            apply(__MODULE__, field, [probe, val])
         end
+      end)
+    else
+      {:error, :missing_type}
     end
   end
 
@@ -164,4 +174,43 @@ defmodule ETrace.Probe do
     end
   end
 
+  # Helper Functions
+  def type(probe, type) do
+    with {:ok, type} <- valid_type?(type) do
+      put_in(probe.type, type)
+    end
+  end
+
+  def in_process(probe, process) do
+    add_process(probe, process)
+  end
+
+  def with_fun(probe, fun) when is_function(fun) do
+    case probe.clauses do
+      [] ->
+        put_in(probe.clauses, [Clause.new() |> Clause.put_fun(fun)])
+      [clause | rest] ->
+        put_in(probe.clauses, [Clause.put_fun(clause, fun) | rest])
+    end
+  end
+
+  def with_fun(probe, {m}), do: with_fun(probe, {m, :_, :_})
+  def with_fun(probe, {m, f}), do: with_fun(probe, {m, f, :_})
+  def with_fun(probe, {m, f, a}) do
+    case probe.clauses do
+      [] ->
+        put_in(probe.clauses, [Clause.new() |> Clause.put_mfa(m, f, a)])
+      [clause | rest] ->
+        put_in(probe.clauses, [Clause.put_mfa(clause, m, f, a) | rest])
+    end
+  end
+
+  def filter_by(probe, matcher) do
+    case probe.clauses do
+      [] ->
+        put_in(probe.clauses, [Clause.new() |> Clause.add_matcher(matcher)])
+      [clause | rest] ->
+        put_in(probe.clauses, [Clause.add_matcher(clause, matcher) | rest])
+    end
+  end
 end

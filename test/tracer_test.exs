@@ -1,11 +1,18 @@
 defmodule ETrace.Tracer.Test do
   use ExUnit.Case
-  alias ETrace.{Tracer, Probe, Clause}
+  alias ETrace.{Tracer, Probe}
   import ETrace.Matcher
   require ETrace.Clause
 
   test "new returns a tracer" do
     assert Tracer.new() == %Tracer{}
+  end
+
+  test "new accepts a probe shorthand" do
+    res = Tracer.new(probe: Probe.new(type: :call))
+      |> Tracer.probes()
+
+    assert res == [Probe.new(type: :call)]
   end
 
   test "add_probe complains if not passed a probe" do
@@ -89,33 +96,16 @@ defmodule ETrace.Tracer.Test do
   test "run full call tracing" do
     my_pid = self()
 
-    # tracer = Tracer.new()
-    #   |> Tracer.add_probe(
-    #         Probe.new(type: :call)
-    #         |> Probe.add_process(self())
-    #         |> Probe.add_clauses(Clause.new()
-    #                         |> Clause.put_mfa(Map, :new, 1)
-    #                         |> Clause.add_matcher(
-    #                           match do (%{items: [a, b]}) -> message(a, b) end
-    #                         )
-    #                       )
-    #                     )
+    probe = Probe.new(
+                type: :call,
+                in_process: self(),
+                with_fun: &Map.new/1,
+                filter_by: match do %{items: [a, b]} -> message(a, b) end)
 
-
-    clause = Clause.new()
-                    |> Clause.put_mfa(Map, :new, 1)
-                    |> Clause.filter(by:
-                        match do (%{items: [a, b]}) -> message(a, b) end)
-
-    tracer = Tracer.new()
-      |> Tracer.add_probe(
-            Probe.new(type: :call)
-            |> Probe.add_process(self())
-            |> Probe.add_clauses(clause))
+    tracer = Tracer.new(probe: probe)
 
     # Run
-    tracer2 = tracer
-      |> Tracer.run(%{forward_to: self()})
+    tracer2 = tracer |> Tracer.run(%{forward_to: self()})
 
     assert tracer == tracer2
 
@@ -136,7 +126,6 @@ defmodule ETrace.Tracer.Test do
     # not expeting more events
     Map.new(%{items: [1, 2]})
     refute_receive({:trace_ts, _, _, _, _, _})
-
   end
 
 end

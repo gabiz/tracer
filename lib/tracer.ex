@@ -11,6 +11,10 @@ defmodule ETrace.Tracer do
     %Tracer{}
   end
 
+  def new(probe: probe) do
+    %Tracer{probes: [probe]}
+  end
+
   def add_probe(tracer, %Probe{} = probe) do
     put_in(tracer.probes, [probe | tracer.probes])
   end

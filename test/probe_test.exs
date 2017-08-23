@@ -2,6 +2,7 @@ defmodule ETrace.Probe.Test do
   use ExUnit.Case
   alias ETrace.Probe
   alias ETrace.Clause
+  import ETrace.Matcher
 
   test "new returns an error if does not include type argument" do
     assert Probe.new(param: :foo) == {:error, :missing_type}
@@ -97,6 +98,23 @@ defmodule ETrace.Probe.Test do
     refute Enum.member?(probe.flags, :arity)
     probe = Probe.arity(probe, true)
     assert Enum.member?(probe.flags, :arity)
+  end
+
+  test "probe can be created using shorthand options" do
+    probe = Probe.new(
+            type: :call,
+            in_process: self(),
+            with_fun: {Map, :new, 1},
+            filter_by: match do (a, b) -> message(a, b) end)
+
+    %Probe{} = probe
+    assert probe.type == :call
+    assert probe.process_list == [self()]
+    assert Enum.count(probe.clauses) == 1
+    clause = hd(probe.clauses)
+    assert Clause.get_mfa(clause) == {Map, :new, 1}
+    expected_specs = match do (a, b) -> message(a, b) end
+    assert clause.match_specs == expected_specs
   end
 
 end

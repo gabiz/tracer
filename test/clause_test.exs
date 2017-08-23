@@ -34,6 +34,13 @@ defmodule ETrace.Clause.Test do
     assert Clause.get_mfa(clause) == {:_, :_, :_}
   end
 
+  test "put_fun accepts an external function" do
+    clause = Clause.new()
+      |> Clause.put_fun(&Map.get/3)
+
+    assert Clause.get_mfa(clause) == {Map, :get, 3}
+  end
+
   test "valid? checks that mfa has been set" do
     res = Clause.new()
       |> Clause.valid?()

@@ -42,6 +42,17 @@ defmodule ETrace.Clause do
     {:error, :invalid_mfa}
   end
 
+  def put_fun(clause, fun) when is_function(fun) do
+    case :erlang.fun_info(fun, :type) do
+      {:type, :external} ->
+        with {m, f, a} <- to_mfa(fun) do
+          put_mfa(clause, m, f, a)
+        end
+      _ ->
+        {:error, "#{inspect(fun)} is not an external fun"}
+    end
+  end
+
   def get_mfa(clause) do
     clause.mfa
   end
@@ -102,4 +113,15 @@ defmodule ETrace.Clause do
   defp valid_flag?(flag) do
     Enum.member?(@valid_flags, flag)
   end
+
+  defp to_mfa(fun) do
+    with {:module, m} <- :erlang.fun_info(fun, :module),
+         {:name, f} <- :erlang.fun_info(fun, :name),
+         {:arity, a} <- :erlang.fun_info(fun, :arity) do
+      {m, f, a}
+    else
+      _ -> {:error, :invalid_mfa}
+    end
+  end
+
 end
