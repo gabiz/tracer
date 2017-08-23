@@ -16,7 +16,7 @@ defmodule ETrace.Probe do
   }
 
   @new_options [
-    :type, :in_process, :with_fun, :filter_by
+    :type, :in_process, :with_fun, :filter_by, :match_by
   ]
 
   defstruct type: nil,
@@ -213,4 +213,22 @@ defmodule ETrace.Probe do
         put_in(probe.clauses, [Clause.add_matcher(clause, matcher) | rest])
     end
   end
+
+  def match_by(probe, matcher) do
+    case probe.clauses do
+      [] ->
+        {m, f, a} = Map.get(matcher, :mfa)
+        clause =
+          Clause.new()
+          |> Clause.add_matcher(Map.get(matcher, :ms))
+          |> Clause.put_mfa(m, f, a)
+          |> Clause.set_flags(Map.get(matcher, :flags, []))
+          |> Clause.set_desc(Map.get(matcher, :desc, "unavailable"))
+        probe
+        |> Map.put(:clauses, [clause])
+      [_clause | _rest] ->
+        {:error, :clause_already_configured}
+    end
+  end
+
 end

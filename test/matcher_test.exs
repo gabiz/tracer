@@ -80,4 +80,49 @@ defmodule ETrace.Matcher.Test do
                   [[:_cmd, :count], [:a, :"$1"], [:b, :"$2"], [:c, :"$3"]]}] }]
   end
 
+  test "body without statements" do
+    ms = match do (a, b, c) -> end
+    assert ms == [{[:"$1", :"$2", :"$3"],
+                  [],
+                  [] }]
+  end
+
+  test "global with Module._ mfa" do
+    res = global do Map._ -> :foo end
+    assert res == %{flags: [:global],
+                    mfa: {Map, :_, :_},
+                    ms: [{[], [], [:foo]}],
+                    desc: "global do Map._() -> :foo end"
+                  }
+  end
+
+  test "global with don't care mfa" do
+    res = global do _ -> :foo end
+    assert res == %{flags: [:global],
+                    mfa: {:_, :_, :_},
+                    ms: [{[], [], [:foo]}],
+                    desc: "global do _ -> :foo end"
+                  }
+  end
+
+  test "global with count including bindings" do
+    res = global do Map.get(a, b) -> count(a, b) end
+    assert res == %{flags: [:global],
+                    mfa: {Map, :get, 2},
+                    ms: [{[:"$1", :"$2"], [],
+                      [message: [[:_cmd, :count], [:a, :"$1"], [:b, :"$2"]]]}],
+                    desc: "global do Map.get(a, b) -> count(a, b) end"
+                  }
+  end
+
+  test "local with count including bindings" do
+    res = local do Map.get(a, b) -> count(a, b) end
+    assert res == %{flags: [:local],
+                    mfa: {Map, :get, 2},
+                    ms: [{[:"$1", :"$2"], [],
+                      [message: [[:_cmd, :count], [:a, :"$1"], [:b, :"$2"]]]}],
+                    desc: "local do Map.get(a, b) -> count(a, b) end"
+                    }
+  end
+
 end

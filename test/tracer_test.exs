@@ -99,8 +99,7 @@ defmodule ETrace.Tracer.Test do
     probe = Probe.new(
                 type: :call,
                 in_process: self(),
-                with_fun: &Map.new/1,
-                filter_by: match do %{items: [a, b]} -> message(a, b) end)
+                match_by: global do Map.new(%{items: [a, b]}) -> message(a, b) end)
 
     tracer = Tracer.new(probe: probe)
 

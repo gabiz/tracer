@@ -60,18 +60,57 @@ defmodule ETrace.Matcher do
   end)
   defp map_elixir_erlang(atom), do: atom
 
-  defmacro match([do: clauses]) do
-    outer_vars = __CALLER__.vars
+  defp base_match(clauses, outer_vars) do
     clauses
-    |> Enum.map(fn({:->, _, clause}) ->
-                  translate_clause(clause, outer_vars)
-                end)
-    |> Macro.escape(unquote: true)
+    |> Enum.reduce(%{mfa: nil, ms: []}, fn({:->, _, clause}, acc) ->
+      {head, conds, body, state} = translate_clause(clause, outer_vars)
+      acc = if Map.get(state, :mod) != nil do
+        clause_mfa = {state.mod, state.fun, state.arity}
+        acc_mfa = Map.get(acc, :mfa)
+        if acc_mfa != nil and acc_mfa != clause_mfa do
+          raise ArgumentError, message:
+            "clause mfa #{inspect acc_mfa}" <>
+            " does not match #{inspect clause_mfa}"
+        end
+        Map.put(acc, :mfa, clause_mfa)
+      else acc end
+      Map.put(acc, :ms, acc.ms ++ [{head, conds, body}])
+      end)
   end
 
+  defmacro match([do: clauses]) do
+    outer_vars = __CALLER__.vars
+    case base_match(clauses, outer_vars) do
+      %{mfa: nil} = m ->
+        m
+        |> Map.get(:ms)
+        |> Macro.escape(unquote: true)
+      _ -> raise ArgumentError, message: "explicit function not allowed"
+    end
+  end
   defmacro match(_) do
     raise ArgumentError, message: "invalid args to matchspec"
   end
+
+  [:global, :local] |> Enum.each(fn (flag) ->
+    defmacro unquote(flag)([do: clauses]) do
+      outer_vars = __CALLER__.vars
+      match_desc = "#{unquote(flag)} do " <>
+        String.slice(Macro.to_string(clauses), 1..-2) <> " end"
+      clauses
+      |> base_match(outer_vars)
+      |> case do
+        %{mfa: nil} = bm -> Map.put(bm, :mfa, {:_, :_, :_})
+        bm -> bm
+      end
+      |> Map.put(:flags, [unquote(flag)])
+      |> Map.put(:desc, match_desc)
+      |> Macro.escape(unquote: true)
+    end
+    defmacro unquote(flag)(_) do
+      raise ArgumentError, message: "invalid args to matchspec"
+    end
+  end)
 
   defmacrop is_literal(term) do
     quote do
@@ -85,7 +124,7 @@ defmodule ETrace.Matcher do
     {head, conds, state} = translate_head(head, outer_vars)
 
     body = translate_body(body, state)
-    {head, conds, body}
+    {head, conds, body, state}
   end
 
   defp set_annotation(state) do
@@ -114,6 +153,7 @@ defmodule ETrace.Matcher do
     end
   end
 
+  defp translate_body(nil, _), do: []
   defp translate_body(expr, state) do
      [translate_body_term(expr, state)]
   end
@@ -262,9 +302,9 @@ defmodule ETrace.Matcher do
       when is_list(params) and length(params) > 1 do
     {param, condition} = Enum.split(params, -1)
 
-    # {head, state} = translate_param(param, outer_vars)
     initial_state = %{vars: [], count: 0, outer_vars: outer_vars}
-    {head, state} = do_translate_param(param, initial_state)
+    {param, state} = extract_fun(param, initial_state)
+    {head, state} = do_translate_param(param, state)
 
     condition = translate_cond(condition, state)
     {head, condition, state}
@@ -274,13 +314,53 @@ defmodule ETrace.Matcher do
     {[], [], %{vars: [], count: 0, outer_vars: outer_vars}}
   end
   defp translate_head(param, outer_vars) when is_list(param) do
+
     initial_state = %{vars: [], count: 0, outer_vars: outer_vars}
-    {head, state} = do_translate_param(param, initial_state)
+    {param, state} = extract_fun(param, initial_state)
+    {head, state} = do_translate_param(param, state)
 
     {head, [], state}
   end
 
   defp translate_head(_, _), do: raise_parameter_error()
+
+  defp extract_fun(head, state) do
+    case head do
+      # Case 1: Mod.fun._
+      [{{:., _, [{:__aliases__, _, mod}, :_]}, _, []}] ->
+        {[], set_mfa(state, Module.concat(mod), :_, :_)}
+      # Case 2: Mod.fun(args)
+      [{{:., _, [{:__aliases__, _, mod}, fun]}, _, new_head}]
+          when is_list(new_head) ->
+        {new_head, set_mfa(state, Module.concat(mod), fun, length(new_head))}
+      # Case 3: Mod._._
+      [{{:., _, [{{:., _, [{:__aliases__, _, mod}, :_]}, _, []}, :_]},
+        _, []}] ->
+        {[], set_mfa(state, Module.concat(mod), :_, :_)}
+      # Case 4: Mod.fun._
+      [{{:., _, [{{:., _, [{:__aliases__, _, mod}, fun]}, _, []}, :_]},
+        _, []}] ->
+        {[], set_mfa(state, Module.concat(mod), fun, :_)}
+      # Case 5: _._._
+      [{{:., _, [{{:., _, [{:_, _, nil}, :_]}, _, []}, :_]}, _, []}] ->
+        {[], set_mfa(state, :_, :_, :_)}
+      # Case 6 _._
+      [{{:., _, [{:_, _, nil}, :_]}, _, []}] ->
+        {[], set_mfa(state, :_, :_, :_)}
+      # Case 7 _
+      [{:_, _, nil}] ->
+        {[], set_mfa(state, :_, :_, :_)}
+      # Case 8 No function, is (args)
+      _ -> {head, state}
+    end
+  end
+
+  defp set_mfa(state, m, f, a) do
+    state
+    |> Map.put(:mod, m)
+    |> Map.put(:fun, f)
+    |> Map.put(:arity, a)
+  end
 
   defp do_translate_param({:_, _, nil}, state) do
     {:_, state}

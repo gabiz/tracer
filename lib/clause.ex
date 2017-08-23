@@ -11,6 +11,7 @@ defmodule ETrace.Clause do
             mfa: nil,
             match_specs: [],
             flags: [],
+            desc: "unavailable",
             matches: 0
 
   def new do
@@ -29,6 +30,14 @@ defmodule ETrace.Clause do
 
   def get_flags(clause) do
     clause.flags
+  end
+
+  def set_desc(clause, desc) do
+    put_in(clause.desc, desc)
+  end
+
+  def get_desc(clause) do
+    clause.desc
   end
 
   def put_mfa(clause, m \\ :_, f \\ :_, a \\ :_)
