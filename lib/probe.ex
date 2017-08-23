@@ -4,7 +4,7 @@ defmodule ETrace.Probe do
   """
 
   alias __MODULE__
-  alias ETrace.Probe.Clause
+  alias ETrace.Clause
 
   @valid_types [:call, :process, :gc, :sched, :send, :receive]
   @flag_map %{

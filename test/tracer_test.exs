@@ -1,8 +1,8 @@
 defmodule ETrace.Tracer.Test do
   use ExUnit.Case
-  alias ETrace.{Tracer, Probe, Probe.Clause}
+  alias ETrace.{Tracer, Probe, Clause}
   import ETrace.Matcher
-  require ETrace.Probe.Clause
+  require ETrace.Clause
 
   test "new returns a tracer" do
     assert Tracer.new() == %Tracer{}

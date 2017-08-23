@@ -1,6 +1,6 @@
-defmodule ETrace.Probe.Clause.Test do
+defmodule ETrace.Clause.Test do
   use ExUnit.Case
-  alias ETrace.Probe.Clause
+  alias ETrace.Clause
 
   test "new returns an empty clause" do
     assert Clause.new() == %Clause{}

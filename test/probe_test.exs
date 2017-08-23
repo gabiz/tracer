@@ -1,7 +1,7 @@
 defmodule ETrace.Probe.Test do
   use ExUnit.Case
   alias ETrace.Probe
-  alias ETrace.Probe.Clause
+  alias ETrace.Clause
 
   test "new returns an error if does not include type argument" do
     assert Probe.new(param: :foo) == {:error, :missing_type}

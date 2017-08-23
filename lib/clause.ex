@@ -1,4 +1,4 @@
-defmodule ETrace.Probe.Clause do
+defmodule ETrace.Clause do
   @moduledoc """
   Manages a Probe's clause
   """
