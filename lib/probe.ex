@@ -41,6 +41,13 @@ defmodule ETrace.Probe do
     end
   end
 
+  # Generate functions Probe.call, Probe.process, ...
+  @valid_types |> Enum.each(fn type ->
+    def unquote(type)(opts) when is_list(opts) do
+      Probe.new([{:type, unquote(type)} | opts])
+    end
+  end)
+
   def get_type(probe) do
     probe.type
   end

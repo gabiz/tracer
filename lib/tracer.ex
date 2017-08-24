@@ -47,20 +47,6 @@ defmodule ETrace.Tracer do
     end
   end
 
-  def tracer(state) do
-    receive do
-      event ->
-        forward_pid = Map.get(state, :forward_to)
-        if is_pid(forward_pid) do
-          send forward_pid, event
-        end
-        if Map.get(state, :print, false) do
-          IO.puts(inspect event)
-        end
-        tracer(state)
-    end
-  end
-
   def stop(tracer) do
     :erlang.trace(:all, false, [:all])
     tracer
@@ -81,6 +67,20 @@ defmodule ETrace.Tracer do
         [] -> :ok
         errors -> {:error, :invalid_probe, errors}
       end
+    end
+  end
+
+  def tracer(state) do
+    receive do
+      event ->
+        forward_pid = Map.get(state, :forward_to)
+        if is_pid(forward_pid) do
+          send forward_pid, event
+        end
+        if Map.get(state, :print, false) do
+          IO.puts(inspect event)
+        end
+        tracer(state)
     end
   end
 

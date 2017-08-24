@@ -135,4 +135,22 @@ defmodule ETrace.Probe.Test do
     assert clause.match_specs == expected_specs
   end
 
+  test "probe can be created using type shortcut" do
+    probe = Probe.call(
+            in_process: self(),
+            match_by: global do Map.get(a, b) -> message(a, b) end)
+
+    %Probe{} = probe
+    assert probe.type == :call
+    assert probe.process_list == [self()]
+    assert probe.flags == [:arity, :timestamp]
+    assert Enum.count(probe.clauses) == 1
+    clause = hd(probe.clauses)
+    assert Clause.get_mfa(clause) == {Map, :get, 2}
+    assert Clause.get_flags(clause) == [:global]
+    expected_specs = match do (a, b) -> message(a, b) end
+    assert clause.match_specs == expected_specs
+  end
+
+
 end
