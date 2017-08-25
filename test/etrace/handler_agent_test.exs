@@ -107,10 +107,9 @@ defmodule ETrace.HandlerAgent.Test do
     end
 
     Process.flag(:trap_exit, true)
-    :global.register_name(:test_reporter, self())
 
     pid = HandlerAgent.start(node: remote_node_a,
-                        event_callback: &HandlerAgent.test_handler_callback/1)
+                event_callback: {&HandlerAgent.test_handler_callback/2, self()})
 
     assert is_pid(pid)
     assert node(pid) == remote_node_a
@@ -119,12 +118,10 @@ defmodule ETrace.HandlerAgent.Test do
     assert_receive {:handler_pid, handler_pid}
     assert node(handler_pid) == remote_node_a
 
-    # TODO: this fails needs callback enhancements to work
-    # send handler_pid, {:trace, :foo}
-    # send handler_pid, {:trace, :bar}
-    #
-    # assert_receive {:trace, :foo}
-    # assert_receive {:trace, :bar}
+    send handler_pid, {:trace, :foo}
+    send handler_pid, {:trace, :bar}
 
+    assert_receive {:trace, :foo}
+    assert_receive {:trace, :bar}
   end
 end

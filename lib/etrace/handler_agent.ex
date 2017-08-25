@@ -157,12 +157,13 @@ as it processes events.
     :ok
   end
 
-  def test_handler_callback(event) do
-    :global.send :test_reporter, event
-    :ok
+  def test_handler_callback(event, test_pid) do
+    send test_pid, event
+    {:ok, test_pid}
   end
 
   # Remote Loading Helpers
+  # credit: based on redbug https://github.com/massemanet/redbug
   defp ensure_loaded_remote(node, mod) do
     case :rpc.call(node, mod, :module_info, [:compile]) do
       {:badrpc, {:EXIT, {:undef, _}}} ->

@@ -13,15 +13,39 @@ defmodule ETrace.PidHandler do
             max_message_queue_size: @default_max_message_queue_size,
             event_callback: nil
 
+  # pipe helper
+  defmacro tuple_x_and_fx(x, term) do
+    quote do: {unquote(x), unquote(x) |> unquote(term)}
+  end
+
   def start(opts) when is_list(opts) do
-    initial_state =
-    Enum.reduce(opts, %PidHandler{}, fn ({keyword, value}, pid_handler) ->
+    initial_state = opts
+    |> Enum.reduce(%PidHandler{}, fn ({keyword, value}, pid_handler) ->
       Map.put(pid_handler, keyword, value)
     end)
-
-    if initial_state.event_callback == nil do
-      raise ArgumentError, message: "missing event_callback configuration"
+    |> tuple_x_and_fx(Map.get(:event_callback))
+    |> case do
+      {_state, nil} ->
+        raise ArgumentError, message: "missing event_callback configuration"
+      {state, {cbk_fun, _cbk_state}} when is_function(cbk_fun) ->
+        state
+      {state, cbk_fun} when is_function(cbk_fun) ->
+        case :erlang.fun_info(cbk_fun, :arity) do
+          {_, 1} ->
+            # encapsulate into arity 2
+            put_in(state.event_callback,
+                  {fn(e, []) -> {cbk_fun.(e), []} end, []})
+          {_, 2} ->
+            put_in(state.event_callback, {cbk_fun, []})
+          {_, arity} ->
+            raise ArgumentError,
+              message: "#invalid arity/#{inspect arity} for: #{inspect cbk_fun}"
+        end
+      {_state, invalid_callback} ->
+        raise ArgumentError,
+              message: "#invalid event_callback: #{inspect invalid_callback}"
     end
+
     spawn_link(fn -> process_loop(initial_state) end)
   end
 
@@ -52,8 +76,10 @@ defmodule ETrace.PidHandler do
   end
 
   defp call_event_callback(state, trace_event) do
-    case state.event_callback.(trace_event) do
-      :ok -> state
+    {cbk_fun, cbk_state} = state.event_callback
+    case cbk_fun.(trace_event, cbk_state) do
+      {:ok, new_cbk_state} ->
+        put_in(state.event_callback, {cbk_fun, new_cbk_state})
       error -> exit(error)
     end
   end

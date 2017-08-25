@@ -64,7 +64,7 @@ defmodule ETrace.PidHandler.Test do
     pid = PidHandler.start(event_callback: fn _event -> :not_ok end)
     assert Process.alive?(pid)
     send pid, {:trace, :foo}
-    assert_receive({:EXIT, ^pid, :not_ok})
+    assert_receive({:EXIT, ^pid, {:not_ok, []}})
     refute Process.alive?(pid)
   end
 
