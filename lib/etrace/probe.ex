@@ -79,16 +79,6 @@ defmodule ETrace.Probe do
   end
 
   def add_clauses(probe, clauses) when is_list(clauses) do
-    # if Enum.any?(clauses, fn
-    #   %Clause{type: ^probe.type} -> false
-    #   %Clause{} -> false
-    #   _ -> true
-    #   end) do
-    #   {:error, :not_a_clause}
-    # else
-    #   put_in(probe.clauses, Enum.concat(probe.clauses, clauses))
-    # end
-
     with [] <- valid_clauses?(clauses, Probe.get_type(probe)) do
       put_in(probe.clauses, Enum.concat(probe.clauses, clauses))
     else
