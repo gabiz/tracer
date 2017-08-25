@@ -57,6 +57,22 @@ defmodule ETrace.Tracer.Test do
     ]}
   end
 
+  # Helper
+  def test_tracer_proc(opts) do
+    receive do
+      event ->
+        forward_pid = Keyword.get(opts, :forward_to)
+        # IO.puts ("I am here forwared_pid #{inspect forward_pid} event #{inspect event}")
+        if is_pid(forward_pid) do
+          send forward_pid, event
+        end
+        if Keyword.get(opts, :print, false) do
+          IO.puts(inspect event)
+        end
+        test_tracer_proc(opts)
+    end
+  end
+
   test "run performs a validation" do
     res = Tracer.new()
       |> Tracer.run()
@@ -74,8 +90,9 @@ defmodule ETrace.Tracer.Test do
 
 
     # Run
+    tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
     tracer2 = tracer
-      |> Tracer.run(%{forward_to: self()})
+      |> Tracer.run(%{pid: tracer_pid})
 
     assert tracer == tracer2
     send self(), :foo
@@ -104,7 +121,9 @@ defmodule ETrace.Tracer.Test do
     tracer = Tracer.new(probe: probe)
 
     # Run
-    tracer2 = tracer |> Tracer.run(%{forward_to: self()})
+    tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
+    tracer2 = tracer
+      |> Tracer.run(%{pid: tracer_pid})
 
     assert tracer == tracer2
 

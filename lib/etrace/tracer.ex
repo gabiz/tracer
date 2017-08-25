@@ -40,7 +40,10 @@ defmodule ETrace.Tracer do
   end
 
   def run(tracer, opts \\ %{}) do
-    tracer_pid = spawn fn -> tracer(opts) end
+    tracer_pid = case opts do
+      %{pid: pid} -> pid
+      _ -> self()
+    end
     with :ok <- valid?(tracer) do
       Enum.each(tracer.probes, fn p -> Probe.apply(p, tracer_pid) end)
       tracer
@@ -67,20 +70,6 @@ defmodule ETrace.Tracer do
         [] -> :ok
         errors -> {:error, :invalid_probe, errors}
       end
-    end
-  end
-
-  def tracer(state) do
-    receive do
-      event ->
-        forward_pid = Map.get(state, :forward_to)
-        if is_pid(forward_pid) do
-          send forward_pid, event
-        end
-        if Map.get(state, :print, false) do
-          IO.puts(inspect event)
-        end
-        tracer(state)
     end
   end
 
