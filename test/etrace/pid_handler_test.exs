@@ -75,12 +75,12 @@ defmodule ETrace.PidHandler.Test do
                               :timer.sleep(20);
                               :ok end)
     assert Process.alive?(pid)
-    for i <- 1..11, do: send pid, {:trace, i}
+    for i <- 1..100, do: send pid, {:trace, i}
     case Process.info(pid, :message_queue_len) do
       {:message_queue_len, len} -> assert len >= 10
       _ -> :ok
     end
-    assert_receive({:EXIT, ^pid, {:message_queue_size, 11}})
+    assert_receive({:EXIT, ^pid, {:message_queue_size, _}})
     refute Process.alive?(pid)
   end
 end

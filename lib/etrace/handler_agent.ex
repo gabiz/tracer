@@ -7,9 +7,10 @@ as it processes events.
   alias __MODULE__
   alias ETrace.PidHandler
 
-  @default_max_tracing_time 20000
+  @default_max_tracing_time 20_000
 
-  defstruct handler_pid: nil,
+  defstruct node: nil,
+            handler_pid: nil,
             timer_ref: nil,
             max_tracing_time: @default_max_tracing_time,
             pid_handler_opts: []
@@ -26,6 +27,12 @@ as it processes events.
   end
 
   defp process_opts(state, opts) do
+    state = if Keyword.get(opts, :node) != nil do
+      put_in(state.node, Keyword.get(opts, :node))
+    else
+      state
+    end
+
     state = if Keyword.get(opts, :max_tracing_time) != nil do
       put_in(state.max_tracing_time, Keyword.get(opts, :max_tracing_time))
     else
@@ -59,7 +66,14 @@ as it processes events.
   end
 
   defp spawn_in_target(state) do
-    spawn_link(fn -> process_loop(state) end)
+    if state.node != nil do
+      [__MODULE__, ETrace.PidHandler] |> Enum.each(fn mod ->
+        ensure_loaded_remote(state.node, mod)
+      end)
+      Node.spawn_link(state.node, fn -> process_loop(state) end)
+    else
+      spawn_link(fn -> process_loop(state) end)
+    end
   end
 
   defp process_loop(state) do
@@ -130,16 +144,51 @@ as it processes events.
     put_in(state.handler_pid, nil)
   end
 
-  defp start_tracing(state) do
+  def start_tracing(state) do
     state
   end
 
-  defp stop_tracing(state) do
+  def stop_tracing(state) do
     state
   end
 
+  # Handler Callbacks
   defp handler_callback(_event) do
     :ok
   end
+
+  def test_handler_callback(event) do
+    :global.send :test_reporter, event
+    :ok
+  end
+
+  # Remote Loading Helpers
+  defp ensure_loaded_remote(node, mod) do
+    case :rpc.call(node, mod, :module_info, [:compile]) do
+      {:badrpc, {:EXIT, {:undef, _}}} ->
+        # module was not found
+        load_remote(node, mod)
+        ensure_loaded_remote(node, mod)
+        :ok
+      {:badrpc , _} -> :ok
+      info when is_list(info) ->
+        case {get_ts(info), get_ts(mod.module_info(:compile))} do
+          {:interpreted, _} -> :ok
+          {target, host} when target < host -> # old code on target
+            load_remote(node, mod)
+            ensure_loaded_remote(node, mod)
+          _ -> :ok
+        end
+    end
+  end
+
+  defp load_remote(node, mod) do
+    {mod, bin, fun} = :code.get_object_code(mod)
+    {:module, _mod} = :rpc.call(node, :code, :load_binary, [mod, fun, bin])
+  end
+
+  defp get_ts([]), do: :interpreted
+  defp get_ts([{:time, time} | _]), do: time
+  defp get_ts([_ | rest]), do: get_ts(rest)
 
 end

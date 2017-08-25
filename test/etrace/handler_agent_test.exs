@@ -88,4 +88,43 @@ defmodule ETrace.HandlerAgent.Test do
     refute Process.alive?(pid)
     refute Process.alive?(handler_pid)
   end
+
+  test "start agent_handler in remote node" do
+    :net_kernel.start([:"local@127.0.0.1"])
+
+    remote_node = "remote#{Enum.random(1..100)}@127.0.0.1"
+    remote_node_a = String.to_atom(remote_node)
+    spawn(fn ->
+        System.cmd("elixir", ["--name", remote_node, "-e", ":timer.sleep(5_000)"])
+    end)
+
+    :timer.sleep(500)
+    # check if remote node is up
+    case :net_adm.ping(remote_node_a) do
+      :pang ->
+        assert false
+      :pong -> :ok
+    end
+
+    Process.flag(:trap_exit, true)
+    :global.register_name(:test_reporter, self())
+
+    pid = HandlerAgent.start(node: remote_node_a,
+                        event_callback: &HandlerAgent.test_handler_callback/1)
+
+    assert is_pid(pid)
+    assert node(pid) == remote_node_a
+
+    send pid, {:get_handler_pid, self()}
+    assert_receive {:handler_pid, handler_pid}
+    assert node(handler_pid) == remote_node_a
+
+    # TODO: this fails needs callback enhancements to work
+    # send handler_pid, {:trace, :foo}
+    # send handler_pid, {:trace, :bar}
+    #
+    # assert_receive {:trace, :foo}
+    # assert_receive {:trace, :bar}
+
+  end
 end
