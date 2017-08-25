@@ -136,15 +136,41 @@ defmodule ETrace.Probe do
     end
   end
 
-  def apply(probe, tracer_pid) do
+  def apply(probe, flags \\ []) do
     with true <- valid?(probe) do
       # Apply trace commands
       Enum.each(probe.process_list, fn p ->
-        :erlang.trace(p, probe.enabled?, [{:tracer, tracer_pid} | flags(probe)])
+        :erlang.trace(p, probe.enabled?, flags ++ flags(probe))
       end)
       # Apply trace_pattern commands
       Enum.each(probe.clauses, fn c -> Clause.apply(c, probe.enabled?) end)
       probe
+    end
+  end
+
+  def get_trace_cmds(probe, flags \\ []) do
+    with true <- valid?(probe) do
+      probe_cmds = Enum.reduce(probe.clauses, [], fn c, acc ->
+        if probe.enabled?, do: [Clause.get_trace_cmd(c) | acc], else: acc
+      end)
+
+      probe.process_list
+      |> Enum.reduce(probe_cmds, fn p, acc ->
+        if probe.enabled? do
+          trace_cmd = [
+            fun: &:erlang.trace/3,
+            pid_port_spec: p,
+            how: true,
+            flag_list: flags ++ flags(probe)
+          ]
+          [trace_cmd | acc]
+        else
+          acc
+        end
+      end)
+      |> Enum.reverse()
+    else
+      error -> raise RuntimeError, message: "invalid probe #{inspect error}"
     end
   end
 

@@ -101,4 +101,28 @@ defmodule ETrace.Clause.Test do
 
     assert flags == [:global, :call_count]
   end
+
+  test "get_trace_cmd includes expected parameters" do
+    cmd = Clause.new()
+      |> Clause.put_mfa(Map, :get, 2)
+      |> Clause.add_matcher([{[:"$1", :"$2"], [is_atom: :"$2"], [message: [[:y, :"$2"]]]}])
+      |> Clause.set_flags([:global, :call_count])
+      |> Clause.get_trace_cmd()
+
+    assert Keyword.get(cmd, :fun) == &:erlang.trace_pattern/3
+    assert Keyword.get(cmd, :mfa) == {Map, :get, 2}
+    assert Keyword.get(cmd, :match_spec) == [{[:"$1", :"$2"], [is_atom: :"$2"], [message: [[:y, :"$2"]]]}]
+    assert Keyword.get(cmd, :flag_list) == [:global, :call_count]
+  end
+
+  test "get_trace_cmd raises an exception when the clause is invalid" do
+    clause = Clause.new()
+      |> Clause.add_matcher([{[:"$1", :"$2"], [is_atom: :"$2"], [message: [[:y, :"$2"]]]}])
+      |> Clause.set_flags([:global, :call_count])
+
+    assert_raise RuntimeError, "invalid clause {:error, :missing_mfa}", fn ->
+      Clause.get_trace_cmd(clause)
+    end
+  end
+
 end

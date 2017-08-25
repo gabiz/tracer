@@ -92,7 +92,7 @@ defmodule ETrace.Tracer.Test do
     # Run
     tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
     tracer2 = tracer
-      |> Tracer.run(%{pid: tracer_pid})
+      |> Tracer.run([tracer: tracer_pid])
 
     assert tracer == tracer2
     send self(), :foo
@@ -123,7 +123,7 @@ defmodule ETrace.Tracer.Test do
     # Run
     tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
     tracer2 = tracer
-      |> Tracer.run(%{pid: tracer_pid})
+      |> Tracer.run([tracer: tracer_pid])
 
     assert tracer == tracer2
 
@@ -146,4 +146,34 @@ defmodule ETrace.Tracer.Test do
     refute_receive({:trace_ts, _, _, _, _, _})
   end
 
+  test "get_trace_cmds generates trace command list" do
+    my_pid = self()
+
+    probe = Probe.new(
+                type: :call,
+                in_process: my_pid,
+                match_by: global do Map.new(%{items: [a, b]}) -> message(a, b) end)
+
+    tracer = Tracer.new(probe: probe)
+
+    # Run
+    tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
+
+    [trace_pattern_cmd, trace_cmd] =
+      Tracer.get_trace_cmds(tracer, [tracer: tracer_pid])
+
+    assert trace_pattern_cmd == [
+      fun: &:erlang.trace_pattern/3,
+      mfa: {Map, :new, 1},
+      match_spec: [{[%{items: [:"$1", :"$2"]}], [],
+        [message: [[:a, :"$1"], [:b, :"$2"]]]}],
+      flag_list: [:global]]
+
+    assert trace_cmd == [
+      fun: &:erlang.trace/3,
+      pid_port_spec: my_pid,
+      how: true,
+      flag_list: [{:tracer, tracer_pid}, :call, :arity, :timestamp]]
+
+  end
 end

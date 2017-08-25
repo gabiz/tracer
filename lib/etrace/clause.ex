@@ -97,6 +97,19 @@ defmodule ETrace.Clause do
     end
   end
 
+  def get_trace_cmd(clause, not_remove \\ true) do
+    with :ok <- valid?(clause) do
+      [
+        fun: &:erlang.trace_pattern/3,
+        mfa: clause.mfa,
+        match_spec: not_remove && clause.match_specs,
+        flag_list: clause.flags
+      ]
+    else
+      error -> raise RuntimeError, message: "invalid clause #{inspect error}"
+    end
+  end
+
   defp validate_mfa(clause) do
     case clause.mfa do
       nil -> {:error, :missing_mfa}

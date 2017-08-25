@@ -152,5 +152,32 @@ defmodule ETrace.Probe.Test do
     assert clause.match_specs == expected_specs
   end
 
+  test "get_trace_cmds returns the expected command list" do
+    probe = Probe.call(
+            in_process: self(),
+            match_by: global do Map.get(a, b) -> message(a, b) end)
 
+    [trace_pattern_cmd, trace_cmd] = Probe.get_trace_cmds(probe)
+
+    assert trace_pattern_cmd == [
+      fun: &:erlang.trace_pattern/3,
+      mfa: {Map, :get, 2},
+      match_spec: [{[:"$1", :"$2"], [], [message: [[:a, :"$1"], [:b, :"$2"]]]}],
+      flag_list: [:global]]
+
+    test_pid = self()
+    assert trace_cmd == [
+      fun: &:erlang.trace/3,
+      pid_port_spec: test_pid,
+      how: true,
+      flag_list: [:call, :arity, :timestamp]]
+  end
+
+  test "get_trace_cmds raises an exception if the probe is invalid" do
+    probe = Probe.new(type: :call)
+
+    assert_raise RuntimeError, "invalid probe {:error, :missing_processes}", fn ->
+      Probe.get_trace_cmds(probe)
+    end
+  end
 end

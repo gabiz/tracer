@@ -39,13 +39,9 @@ defmodule ETrace.Tracer do
     end
   end
 
-  def run(tracer, opts \\ %{}) do
-    tracer_pid = case opts do
-      %{pid: pid} -> pid
-      _ -> self()
-    end
+  def run(tracer, flags \\ []) do
     with :ok <- valid?(tracer) do
-      Enum.each(tracer.probes, fn p -> Probe.apply(p, tracer_pid) end)
+      Enum.each(tracer.probes, fn p -> Probe.apply(p, flags) end)
       tracer
     end
   end
@@ -53,6 +49,16 @@ defmodule ETrace.Tracer do
   def stop(tracer) do
     :erlang.trace(:all, false, [:all])
     tracer
+  end
+
+  def get_trace_cmds(tracer, flags \\ []) do
+    with :ok <- valid?(tracer) do
+      Enum.reduce(tracer.probes, [], fn p, acc ->
+        acc ++ Probe.get_trace_cmds(p, flags)
+      end)
+    else
+      error -> raise RuntimeError, message: "invalid trace #{inspect error}"
+    end
   end
 
   defp validate_probes(tracer) do
