@@ -187,10 +187,8 @@ defmodule ETrace.Tracer.Test do
 
     tracer = Tracer.new(probe: probe)
 
-    # Run
     tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
-    tracer2 = tracer
-      |> Tracer.start(forward_pid: tracer_pid)
+    tracer2 = Tracer.start(tracer, forward_pid: tracer_pid)
 
     # no match
     Map.new(%{other_key: [1, 2]})
@@ -207,6 +205,42 @@ defmodule ETrace.Tracer.Test do
     :timer.sleep(50)
     # not expeting more events
     Map.new(%{items: [1, 2]})
+    refute_receive({:trace_ts, _, _, _, _, _})
+  end
+
+  def local_function(a) do
+    a
+  end
+
+  test "trace local function" do
+    my_pid = self()
+
+    probe = Probe.new(
+                type: :call,
+                in_process: self(),
+                # with_fun: {ETrace.Tracer.Test, :local_function, 1},
+                # match_by: local do (a) -> message(a) end)
+                match_by: local do ETrace.Tracer.Test.local_function(a) -> message(a) end)
+
+    tracer = Tracer.new(probe: probe)
+
+    tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
+    tracer2 = Tracer.start(tracer, forward_pid: tracer_pid)
+
+    :timer.sleep(50)
+
+    # call local_function
+    local_function(1)
+
+    String.split("ab cd")
+    assert_receive({:trace_ts, ^my_pid, :call,
+      {ETrace.Tracer.Test, :local_function, 1}, [[:a, 1]], _})
+
+    Tracer.stop(tracer2)
+
+    :timer.sleep(50)
+    # not expeting more events
+    local_function(1)
     refute_receive({:trace_ts, _, _, _, _, _})
   end
 

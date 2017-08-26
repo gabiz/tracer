@@ -100,12 +100,12 @@ defmodule ETrace.Probe.Test do
     assert Enum.member?(probe.flags, :arity)
   end
 
-  test "probe can be created using shorthand options" do
+  test "probe can be created using with_fun and match_by options" do
     probe = Probe.new(
             type: :call,
             in_process: self(),
             with_fun: {Map, :get, 2},
-            filter_by: match do (a, b) -> message(a, b) end)
+            match_by: global do (a, b) -> message(a, b) end)
 
     %Probe{} = probe
     assert probe.type == :call
@@ -117,7 +117,7 @@ defmodule ETrace.Probe.Test do
     assert clause.match_specs == expected_specs
   end
 
-  test "probe can be created using match_by option" do
+  test "probe can be created using only match_by option" do
     probe = Probe.new(
             type: :call,
             in_process: self(),

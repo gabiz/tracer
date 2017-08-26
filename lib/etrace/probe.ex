@@ -222,14 +222,14 @@ defmodule ETrace.Probe do
     end
   end
 
-  def filter_by(probe, matcher) do
-    case probe.clauses do
-      [] ->
-        put_in(probe.clauses, [Clause.new() |> Clause.add_matcher(matcher)])
-      [clause | rest] ->
-        put_in(probe.clauses, [Clause.add_matcher(clause, matcher) | rest])
-    end
-  end
+  # def filter_by(probe, matcher) do
+  #   case probe.clauses do
+  #     [] ->
+  #       put_in(probe.clauses, [Clause.new() |> Clause.add_matcher(matcher)])
+  #     [clause | rest] ->
+  #       put_in(probe.clauses, [Clause.add_matcher(clause, matcher) | rest])
+  #   end
+  # end
 
   def match_by(probe, matcher) do
     case probe.clauses do
@@ -243,8 +243,13 @@ defmodule ETrace.Probe do
           |> Clause.set_desc(Map.get(matcher, :desc, "unavailable"))
         probe
         |> Map.put(:clauses, [clause])
-      [_clause | _rest] ->
-        {:error, :clause_already_configured}
+      [clause | rest] ->
+        # replace match spec of last clause
+        clause = clause
+          |> Clause.add_matcher(Map.get(matcher, :ms))
+          |> Clause.set_flags(Map.get(matcher, :flags, []))
+          |> Clause.set_desc(Map.get(matcher, :desc, "unavailable"))
+        put_in(probe.clauses, [clause | rest])
     end
   end
 
