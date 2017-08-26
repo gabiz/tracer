@@ -75,7 +75,7 @@ defmodule ETrace.Matcher do
         Map.put(acc, :mfa, clause_mfa)
       else acc end
       Map.put(acc, :ms, acc.ms ++ [{head, conds, body}])
-      end)
+    end)
   end
 
   defmacro match([do: clauses]) do

@@ -13,7 +13,9 @@ as it processes events.
             handler_pid: nil,
             timer_ref: nil,
             max_tracing_time: @default_max_tracing_time,
-            pid_handler_opts: []
+            pid_handler_opts: [],
+            start_trace_cmds: [],
+            stop_trace_cmds: []
 
   def start(opts \\ []) do
     initial_state = process_opts(%HandlerAgent{}, opts)
@@ -26,12 +28,16 @@ as it processes events.
     send pid, :stop
   end
 
+  defmacro assign_to(res, target) do
+    quote do: unquote(target) = unquote(res)
+  end
+
   defp process_opts(state, opts) do
-    state = if Keyword.get(opts, :node) != nil do
-      put_in(state.node, Keyword.get(opts, :node))
-    else
-      state
-    end
+    state
+    |> Map.put(:node, Keyword.get(opts, :node, nil))
+    |> Map.put(:start_trace_cmds, Keyword.get(opts, :start_trace_cmds, []))
+    |> Map.put(:stop_trace_cmds, Keyword.get(opts, :stop_trace_cmds, []))
+    |> assign_to(state)
 
     state = if Keyword.get(opts, :max_tracing_time) != nil do
       put_in(state.max_tracing_time, Keyword.get(opts, :max_tracing_time))
@@ -55,13 +61,21 @@ as it processes events.
       state
     end
 
+    event_callback =
+    if Keyword.get(opts, :forward_pid) != nil do
+      {:event_callback, {&__MODULE__.forwarding_handler_callback/2,
+                          Keyword.get(opts, :forward_pid)}}
+    else
+      {:event_callback, &__MODULE__.discard_handler_callback/1}
+    end
+
     if Keyword.get(opts, :event_callback) != nil do
       put_in(state.pid_handler_opts,
           [{:event_callback, Keyword.get(opts, :event_callback)}
            | state.pid_handler_opts])
     else
       put_in(state.pid_handler_opts,
-          [{:event_callback, &handler_callback/1} | state.pid_handler_opts])
+          [event_callback | state.pid_handler_opts])
     end
   end
 
@@ -145,21 +159,40 @@ as it processes events.
   end
 
   def start_tracing(state) do
+    trace_fun = &:erlang.trace/3
+    state.start_trace_cmds
+    |> Enum.each(fn
+      [{:fun, ^trace_fun} | args] ->
+        bare_args = Enum.map(args, fn
+          # inject tracer option
+          {:flag_list, flags} -> [{:tracer, state.handler_pid} | flags]
+          {_other, arg} -> arg
+        end)
+        apply(trace_fun, bare_args)
+      [{:fun, fun} | args] ->
+        bare_args = Enum.map(args, &(elem(&1, 1)))
+        apply(fun, bare_args)
+    end)
     state
   end
 
   def stop_tracing(state) do
+    state.stop_trace_cmds
+    |> Enum.each(fn [{:fun, fun} | args] ->
+      bare_args = Enum.map(args, &(elem(&1, 1)))
+      apply(fun, bare_args)
+    end)
     state
   end
 
   # Handler Callbacks
-  defp handler_callback(_event) do
+  def discard_handler_callback(_event) do
     :ok
   end
 
-  def test_handler_callback(event, test_pid) do
-    send test_pid, event
-    {:ok, test_pid}
+  def forwarding_handler_callback(event, pid) do
+    send pid, event
+    {:ok, pid}
   end
 
   # Remote Loading Helpers

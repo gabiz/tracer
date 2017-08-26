@@ -28,6 +28,15 @@ defmodule ETrace.HandlerAgent.Test do
     assert Keyword.get(pid_handler_opts, :event_callback) == &Map.new/1
   end
 
+  test "start() sets correctly the forward_pid option" do
+    pid = HandlerAgent.start(forward_pid: self())
+
+    send pid, {:get_pid_handler_opts, self()}
+    assert_receive {:pid_handler_opts, pid_handler_opts}
+    assert Keyword.get(pid_handler_opts, :event_callback) ==
+      {&HandlerAgent.forwarding_handler_callback/2, self()}
+  end
+
   test "agent_handler process finishes after timeout" do
     Process.flag(:trap_exit, true)
     pid = HandlerAgent.start(max_tracing_time: 50)
@@ -108,8 +117,7 @@ defmodule ETrace.HandlerAgent.Test do
 
     Process.flag(:trap_exit, true)
 
-    pid = HandlerAgent.start(node: remote_node_a,
-                event_callback: {&HandlerAgent.test_handler_callback/2, self()})
+    pid = HandlerAgent.start(node: remote_node_a, forward_pid: self())
 
     assert is_pid(pid)
     assert node(pid) == remote_node_a

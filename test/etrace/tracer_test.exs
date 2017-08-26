@@ -62,7 +62,7 @@ defmodule ETrace.Tracer.Test do
     receive do
       event ->
         forward_pid = Keyword.get(opts, :forward_to)
-        # IO.puts ("I am here forwared_pid #{inspect forward_pid} event #{inspect event}")
+        # IO.puts ("tracing handler: forward_pid #{inspect forward_pid} event #{inspect event}")
         if is_pid(forward_pid) do
           send forward_pid, event
         end
@@ -92,7 +92,7 @@ defmodule ETrace.Tracer.Test do
     # Run
     tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
     tracer2 = tracer
-      |> Tracer.run([tracer: tracer_pid])
+      |> Tracer.run(tracer: tracer_pid)
 
     assert tracer == tracer2
     send self(), :foo
@@ -102,7 +102,7 @@ defmodule ETrace.Tracer.Test do
     refute_receive({:trace_ts, ^my_pid, :send, :foo, ^my_pid, _})
 
     # Stop
-    res = Tracer.stop(tracer2)
+    res = Tracer.stop_run(tracer2)
 
     assert res == tracer2
     send self(), :foo_one_more_time
@@ -137,7 +137,7 @@ defmodule ETrace.Tracer.Test do
     assert_receive({:trace_ts, ^my_pid, :call,
       {Map, :new, 1}, [[:a, 1], [:b, 2]], _})
 
-    res = Tracer.stop(tracer2)
+    res = Tracer.stop_run(tracer2)
 
     assert res == tracer2
 
@@ -160,7 +160,7 @@ defmodule ETrace.Tracer.Test do
     tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
 
     [trace_pattern_cmd, trace_cmd] =
-      Tracer.get_trace_cmds(tracer, [tracer: tracer_pid])
+      Tracer.get_trace_cmds(tracer, tracer: tracer_pid)
 
     assert trace_pattern_cmd == [
       fun: &:erlang.trace_pattern/3,
@@ -176,4 +176,38 @@ defmodule ETrace.Tracer.Test do
       flag_list: [{:tracer, tracer_pid}, :call, :arity, :timestamp]]
 
   end
+
+  test "start and stop tracing" do
+    my_pid = self()
+
+    probe = Probe.new(
+                type: :call,
+                in_process: self(),
+                match_by: global do Map.new(%{items: [a, b]}) -> message(a, b) end)
+
+    tracer = Tracer.new(probe: probe)
+
+    # Run
+    tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
+    tracer2 = tracer
+      |> Tracer.start(forward_pid: tracer_pid)
+
+    # no match
+    Map.new(%{other_key: [1, 2]})
+    refute_receive({:trace_ts, ^my_pid, :call,
+      {Map, :new, 1}, _, _})
+
+    # valid match - ignore timestamps
+    Map.new(%{items: [1, 2]})
+    assert_receive({:trace_ts, ^my_pid, :call,
+      {Map, :new, 1}, [[:a, 1], [:b, 2]], _})
+
+    Tracer.stop(tracer2)
+
+    :timer.sleep(50)
+    # not expeting more events
+    Map.new(%{items: [1, 2]})
+    refute_receive({:trace_ts, _, _, _, _, _})
+  end
+
 end
