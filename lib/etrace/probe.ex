@@ -222,15 +222,6 @@ defmodule ETrace.Probe do
     end
   end
 
-  # def filter_by(probe, matcher) do
-  #   case probe.clauses do
-  #     [] ->
-  #       put_in(probe.clauses, [Clause.new() |> Clause.add_matcher(matcher)])
-  #     [clause | rest] ->
-  #       put_in(probe.clauses, [Clause.add_matcher(clause, matcher) | rest])
-  #   end
-  # end
-
   def match_by(probe, matcher) do
     case probe.clauses do
       [] ->

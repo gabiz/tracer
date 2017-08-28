@@ -60,6 +60,11 @@ defmodule ETrace.Matcher.Test do
     assert ms == [{[:"$1"], [], [:"$1", 0] }]
   end
 
+  test "body with message including one literal" do
+    ms = match do -> message(:a) end
+    assert ms == [{[], [], [{:message, [:a]}] }]
+  end
+
   test "body with message including literals" do
     ms = match do -> message(:a, :b, :c) end
     assert ms == [{[], [], [{:message, [:a, :b, :c]}] }]
@@ -87,11 +92,38 @@ defmodule ETrace.Matcher.Test do
                   [] }]
   end
 
+  test "global with erlang module and any function" do
+    res = global do :lists._ -> :foo end
+    assert res == %{flags: [:global],
+                    mfa: {:lists, :_, :_},
+                    ms: [{:_, [], [:foo]}],
+                    desc: "global do :lists._() -> :foo end"
+                  }
+  end
+
+  test "global with erlang module and any arity" do
+    res = global do :lists.sum -> :foo end
+    assert res == %{flags: [:global],
+                    mfa: {:lists, :sum, :_},
+                    ms: [{:_, [], [:foo]}],
+                    desc: "global do :lists.sum() -> :foo end"
+                  }
+  end
+
+  test "global with erlang module and function" do
+    res = global do :lists.max(a) -> :foo end
+    assert res == %{flags: [:global],
+                    mfa: {:lists, :max, 1},
+                    ms: [{[:"$1"], [], [:foo]}],
+                    desc: "global do :lists.max(a) -> :foo end"
+                  }
+  end
+
   test "global with Module._ mfa" do
     res = global do Map._ -> :foo end
     assert res == %{flags: [:global],
                     mfa: {Map, :_, :_},
-                    ms: [{[], [], [:foo]}],
+                    ms: [{:_, [], [:foo]}],
                     desc: "global do Map._() -> :foo end"
                   }
   end
@@ -100,7 +132,7 @@ defmodule ETrace.Matcher.Test do
     res = global do _ -> :foo end
     assert res == %{flags: [:global],
                     mfa: {:_, :_, :_},
-                    ms: [{[], [], [:foo]}],
+                    ms: [{:_, [], [:foo]}],
                     desc: "global do _ -> :foo end"
                   }
   end

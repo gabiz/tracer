@@ -314,7 +314,6 @@ defmodule ETrace.Matcher do
     {[], [], %{vars: [], count: 0, outer_vars: outer_vars}}
   end
   defp translate_head(param, outer_vars) when is_list(param) do
-
     initial_state = %{vars: [], count: 0, outer_vars: outer_vars}
     {param, state} = extract_fun(param, initial_state)
     {head, state} = do_translate_param(param, state)
@@ -328,7 +327,7 @@ defmodule ETrace.Matcher do
     case head do
       # Case 1: Mod.fun._
       [{{:., _, [{:__aliases__, _, mod}, :_]}, _, []}] ->
-        {[], set_mfa(state, Module.concat(mod), :_, :_)}
+        {:_, set_mfa(state, Module.concat(mod), :_, :_)}
       # Case 2: Mod.fun(args)
       [{{:., _, [{:__aliases__, _, mod}, fun]}, _, new_head}]
           when is_list(new_head) ->
@@ -336,21 +335,30 @@ defmodule ETrace.Matcher do
       # Case 3: Mod._._
       [{{:., _, [{{:., _, [{:__aliases__, _, mod}, :_]}, _, []}, :_]},
         _, []}] ->
-        {[], set_mfa(state, Module.concat(mod), :_, :_)}
+        {:_, set_mfa(state, Module.concat(mod), :_, :_)}
       # Case 4: Mod.fun._
       [{{:., _, [{{:., _, [{:__aliases__, _, mod}, fun]}, _, []}, :_]},
         _, []}] ->
-        {[], set_mfa(state, Module.concat(mod), fun, :_)}
+        {:_, set_mfa(state, Module.concat(mod), fun, :_)}
       # Case 5: _._._
       [{{:., _, [{{:., _, [{:_, _, nil}, :_]}, _, []}, :_]}, _, []}] ->
-        {[], set_mfa(state, :_, :_, :_)}
+        {:_, set_mfa(state, :_, :_, :_)}
       # Case 6 _._
       [{{:., _, [{:_, _, nil}, :_]}, _, []}] ->
-        {[], set_mfa(state, :_, :_, :_)}
-      # Case 7 _
+        {:_, set_mfa(state, :_, :_, :_)}
+      # Case 7 :mod._
+      [{{:., _, [mod, fun]}, _, []}] when is_atom(mod) and is_atom(fun) ->
+        {:_, set_mfa(state, mod, fun, :_)}
+      [{{:., _, [{{:., _, [mod, fun]}, _, []}, :_]}, _, []}]
+          when is_atom(mod) and is_atom(fun) ->
+        {[], set_mfa(state, mod, fun, :_)}
+      # Case 8 :mod.fun(args)
+      [{{:., _, [mod, fun]}, _, new_head}] when is_atom(mod) and is_atom(fun) ->
+        {new_head, set_mfa(state, mod, fun, length(new_head))}
+      # Case 9 _
       [{:_, _, nil}] ->
-        {[], set_mfa(state, :_, :_, :_)}
-      # Case 8 No function, is (args)
+        {:_, set_mfa(state, :_, :_, :_)}
+      # Case 10 No function, is (args)
       _ -> {head, state}
     end
   end
