@@ -39,7 +39,8 @@ defmodule ETrace.EventCall do
     def to_string(event) do
       "#{Event.format_ts event.ts}: #{inspect event.pid} >> " <>
         "#{inspect event.mod}.#{Atom.to_string(event.fun)}/#{inspect event.arity} " <>
-        " #{inspect format_message(event.message)}"
+        if event.message != nil, do: " #{inspect format_message(event.message)}",
+        else: ""
     end
 
     defp format_message(term) when is_list(term) do

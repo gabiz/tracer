@@ -29,6 +29,14 @@ defmodule ETrace.Tracer.Test do
     assert res == [Probe.new(type: :call)]
   end
 
+  test "add_probe fails if tracer has a probe of the same type" do
+    res = Tracer.new()
+      |> Tracer.add_probe(Probe.new(type: :call))
+      |> Tracer.add_probe(Probe.new(type: :call))
+
+    assert res == {:error, :duplicate_probe_type}
+  end
+
   test "remove_probe removes probe from tracer" do
     res = Tracer.new()
       |> Tracer.add_probe(Probe.new(type: :call))
@@ -115,7 +123,7 @@ defmodule ETrace.Tracer.Test do
 
     probe = Probe.new(
                 type: :call,
-                in_process: self(),
+                process: self(),
                 match_by: global do Map.new(%{items: [a, b]}) -> message(a, b) end)
 
     tracer = Tracer.new(probe: probe)
@@ -146,19 +154,19 @@ defmodule ETrace.Tracer.Test do
     refute_receive({:trace_ts, _, _, _, _, _})
   end
 
-  test "get_trace_cmds generates trace command list" do
+  test "get_start_cmds generates trace command list" do
     my_pid = self()
 
     probe = Probe.new(
                 type: :call,
-                in_process: my_pid,
+                process: my_pid,
                 match_by: global do Map.new(%{items: [a, b]}) -> message(a, b) end)
 
     tracer = Tracer.new(probe: probe)
 
     tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
     [trace_pattern_cmd, trace_cmd] =
-      Tracer.get_trace_cmds(tracer, tracer: tracer_pid)
+      Tracer.get_start_cmds(tracer, tracer: tracer_pid)
 
     assert trace_pattern_cmd == [
       fun: &:erlang.trace_pattern/3,
@@ -176,11 +184,12 @@ defmodule ETrace.Tracer.Test do
   end
 
   test "start and stop tracing" do
+    Process.flag(:trap_exit, true)
     my_pid = self()
 
     probe = Probe.new(
                 type: :call,
-                in_process: self(),
+                process: self(),
                 match_by: global do Map.new(%{items: [a, b]}) -> message(a, b) end)
 
     tracer = Tracer.new(probe: probe)
@@ -212,11 +221,12 @@ defmodule ETrace.Tracer.Test do
   end
 
   test "trace local function" do
+    Process.flag(:trap_exit, true)
     my_pid = self()
 
     probe = Probe.new(
                 type: :call,
-                in_process: self(),
+                process: self(),
                 # with_fun: {ETrace.Tracer.Test, :local_function, 1},
                 # match_by: local do (a) -> message(a) end)
                 match_by: local do ETrace.Tracer.Test.local_function(a) -> message(a) end)
@@ -241,10 +251,11 @@ defmodule ETrace.Tracer.Test do
   end
 
   test "trace with a count reporter" do
+    Process.flag(:trap_exit, true)
     test_pid = self()
     probe = Probe.new(
                 type: :call,
-                in_process: test_pid,
+                process: test_pid,
                 match_by: local do String.split(a, b) -> message(a, b) end)
                 # match_by: local do String.split(string, pattern) -> return_trace(); count(string, pattern) end)
                 # match_by: local do ETrace.Tracer.Test.local_function(a) -> return_trace(); count(:max, a)  end)
@@ -280,7 +291,7 @@ defmodule ETrace.Tracer.Test do
     String.split("x,y", ",")
 
     :timer.sleep(50)
-    send reporter_pid, :finish_trace
+    Reporter.stop(reporter_pid)
 
     assert_receive %ETrace.CountReporter.Event{counts:
       [{[a: "\"hello world\"", b: "\",\""], 1},
@@ -290,6 +301,7 @@ defmodule ETrace.Tracer.Test do
     Tracer.stop(tracer2)
 
     assert_receive({:EXIT, _, {:done_tracing, :stop_command}})
+    assert_receive({:EXIT, _, :done_reporting})
     # not expeting more events
     refute_receive(_)
   end
@@ -298,11 +310,12 @@ defmodule ETrace.Tracer.Test do
   def recur_len([_h | t], acc), do: recur_len(t, acc + 1)
 
   test "trace with a duration reporter" do
+    Process.flag(:trap_exit, true)
     test_pid = self()
 
     probe = Probe.new(
                 type: :call,
-                in_process: test_pid,
+                process: test_pid,
                 match_by: local do ETrace.Tracer.Test.recur_len(list, val) -> return_trace(); message(list, val) end)
 
     tracer = Tracer.new(probe: probe)
@@ -329,10 +342,11 @@ defmodule ETrace.Tracer.Test do
   end
 
   test "trace with a display reporter" do
+    Process.flag(:trap_exit, true)
     test_pid = self()
     probe = Probe.new(
                 type: :call,
-                in_process: test_pid,
+                process: test_pid,
                 match_by: local do String.split(string, pattern) -> return_trace(); message(string, pattern) end)
 
     tracer = Tracer.new(probe: probe)
@@ -382,10 +396,11 @@ defmodule ETrace.Tracer.Test do
   end
 
   test "trace with a call_seq reporter" do
+    Process.flag(:trap_exit, true)
     test_pid = self()
     probe = Probe.new(
                 type: :call,
-                in_process: test_pid,
+                process: test_pid,
                 match_by: local do ETrace.Tracer.Test.recur_len(list, val) -> return_trace(); message(list, val) end)
                 # match_by: local do _ -> return_trace(); message(:"$_") end)
 
@@ -401,7 +416,7 @@ defmodule ETrace.Tracer.Test do
     recur_len([1, 2, 3, 4, 5], 0)
 
     :timer.sleep(50)
-    send reporter_pid, :finish_trace
+    Reporter.stop(reporter_pid)
 
     assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 0, fun: :recur_len, message: [[:list, [1, 2, 3, 4, 5]], [:val, 0]], mod: ETrace.Tracer.Test, pid: _, return_value: nil, type: :enter}
     assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 1, fun: :recur_len, message: [[:list, [2, 3, 4, 5]], [:val, 1]], mod: ETrace.Tracer.Test, pid: _, return_value: nil, type: :enter}
@@ -419,6 +434,7 @@ defmodule ETrace.Tracer.Test do
     Tracer.stop(tracer2)
 
     assert_receive({:EXIT, _, {:done_tracing, :stop_command}})
+    assert_receive({:EXIT, _, :done_reporting})
     # not expeting more events
     refute_receive(_)
   end

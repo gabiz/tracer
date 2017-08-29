@@ -1,6 +1,6 @@
 defmodule EtraceTest do
   use ExUnit.Case
-  doctest Etrace
+  doctest ETrace
 
   test "the truth" do
     assert 1 + 1 == 2

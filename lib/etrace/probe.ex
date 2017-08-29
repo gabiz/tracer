@@ -6,17 +6,17 @@ defmodule ETrace.Probe do
   alias __MODULE__
   alias ETrace.Clause
 
-  @valid_types [:call, :process, :gc, :sched, :send, :receive]
+  @valid_types [:call, :procs, :gc, :sched, :send, :receive]
   @flag_map %{
     call: :call,
-    process: :procs,
+    procs: :procs,
     sched: :running,
     send: :send,
     receive: :receive
   }
 
   @new_options [
-    :type, :in_process, :with_fun, :filter_by, :match_by
+    :type, :process, :with_fun, :filter_by, :match_by
   ]
 
   defstruct type: nil,
@@ -198,7 +198,7 @@ defmodule ETrace.Probe do
     end
   end
 
-  def in_process(probe, process) do
+  def process(probe, process) do
     add_process(probe, process)
   end
 
@@ -223,25 +223,13 @@ defmodule ETrace.Probe do
   end
 
   def match_by(probe, matcher) do
-    case probe.clauses do
-      [] ->
-        {m, f, a} = Map.get(matcher, :mfa)
-        clause =
-          Clause.new()
-          |> Clause.add_matcher(Map.get(matcher, :ms))
-          |> Clause.put_mfa(m, f, a)
-          |> Clause.set_flags(Map.get(matcher, :flags, []))
-          |> Clause.set_desc(Map.get(matcher, :desc, "unavailable"))
-        probe
-        |> Map.put(:clauses, [clause])
-      [clause | rest] ->
-        # replace match spec of last clause
-        clause = clause
-          |> Clause.add_matcher(Map.get(matcher, :ms))
-          |> Clause.set_flags(Map.get(matcher, :flags, []))
-          |> Clause.set_desc(Map.get(matcher, :desc, "unavailable"))
-        put_in(probe.clauses, [clause | rest])
-    end
+    {m, f, a} = Map.get(matcher, :mfa)
+    clause = Clause.new()
+      |> Clause.add_matcher(Map.get(matcher, :ms))
+      |> Clause.put_mfa(m, f, a)
+      |> Clause.set_flags(Map.get(matcher, :flags, []))
+      |> Clause.set_desc(Map.get(matcher, :desc, "unavailable"))
+    put_in(probe.clauses, [clause | probe.clauses])
   end
 
 end

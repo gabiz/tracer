@@ -7,7 +7,7 @@ as it processes events.
   alias __MODULE__
   alias ETrace.PidHandler
 
-  @default_max_tracing_time 20_000
+  @default_max_tracing_time 30_000
 
   defstruct node: nil,
             handler_pid: nil,
@@ -96,12 +96,13 @@ as it processes events.
         Process.flag(:trap_exit, true)
         state
         |> start_handler()
+        |> stop_tracing()
         |> start_tracing()
         |> start_timer()
         |> process_loop()
       {:timeout, _timeref, _} ->
         stop_tracing_and_handler(state)
-        exit({:done_tracing, :tracing_timeout})
+        exit({:done_tracing, :tracing_timeout, state.max_tracing_time})
       :stop ->
         stop_tracing_and_handler(state)
         exit({:done_tracing, :stop_command})
@@ -110,9 +111,9 @@ as it processes events.
       {:EXIT, _, {:message_queue_size, len}} ->
         stop_tracing(state)
         exit({:done_tracing, :message_queue_size, len})
-      {:EXIT, _, :max_message_count} ->
+      {:EXIT, _, {:max_message_count, count}} ->
         stop_tracing(state)
-        exit({:done_tracing, :max_message_count})
+        exit({:done_tracing, :max_message_count, count})
       :restart_timer ->
         state
         |> cancel_timer()
@@ -159,6 +160,8 @@ as it processes events.
   end
 
   def start_tracing(state) do
+    # TODO store the number of matches, so that it can be send back to admin
+    # process
     trace_fun = &:erlang.trace/3
     state.start_trace_cmds
     |> Enum.each(fn
@@ -168,10 +171,15 @@ as it processes events.
           {:flag_list, flags} -> [{:tracer, state.handler_pid} | flags]
           {_other, arg} -> arg
         end)
-        apply(trace_fun, bare_args)
+        # IO.puts("#{inspect trace_fun} args: #{inspect bare_args}")
+        _res = apply(trace_fun, bare_args)
+        # IO.puts("#{inspect trace_fun} args: #{inspect bare_args}" <>
+        # " = #{inspect res}")
+
       [{:fun, fun} | args] ->
         bare_args = Enum.map(args, &(elem(&1, 1)))
-        apply(fun, bare_args)
+        _res = apply(fun, bare_args)
+        # IO.puts("#{inspect fun} args: #{inspect bare_args} = #{inspect res}")
     end)
     state
   end

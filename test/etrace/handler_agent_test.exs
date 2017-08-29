@@ -41,7 +41,7 @@ defmodule ETrace.HandlerAgent.Test do
     Process.flag(:trap_exit, true)
     pid = HandlerAgent.start(max_tracing_time: 50)
     assert Process.alive?(pid)
-    assert_receive({:EXIT, ^pid, {:done_tracing, :tracing_timeout}})
+    assert_receive({:EXIT, ^pid, {:done_tracing, :tracing_timeout, 50}})
     refute Process.alive?(pid)
   end
 
@@ -56,7 +56,7 @@ defmodule ETrace.HandlerAgent.Test do
 
     send handler_pid, {:trace, :foo}
 
-    assert_receive({:EXIT, ^pid, {:done_tracing, :max_message_count}})
+    assert_receive({:EXIT, ^pid, {:done_tracing, :max_message_count, 1}})
     refute Process.alive?(pid)
     refute Process.alive?(handler_pid)
   end

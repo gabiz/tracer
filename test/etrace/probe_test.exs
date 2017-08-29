@@ -54,7 +54,7 @@ defmodule ETrace.Probe.Test do
   end
 
   test "add_clauses return an error if the clause type does not match probe" do
-    res = Probe.new(type: :process)
+    res = Probe.new(type: :procs)
       |> Probe.add_clauses(Clause.new() |> Clause.put_mfa())
 
     assert res == {:error,
@@ -100,12 +100,12 @@ defmodule ETrace.Probe.Test do
     assert Enum.member?(probe.flags, :arity)
   end
 
-  test "probe can be created using with_fun and match_by options" do
+  test "probe can be created using with_fun option" do
     probe = Probe.new(
             type: :call,
-            in_process: self(),
-            with_fun: {Map, :get, 2},
-            match_by: global do (a, b) -> message(a, b) end)
+            process: self(),
+            with_fun: {Map, :get, 2})
+            # match_by: global do (a, b) -> message(a, b) end)
 
     %Probe{} = probe
     assert probe.type == :call
@@ -113,14 +113,14 @@ defmodule ETrace.Probe.Test do
     assert Enum.count(probe.clauses) == 1
     clause = hd(probe.clauses)
     assert Clause.get_mfa(clause) == {Map, :get, 2}
-    expected_specs = match do (a, b) -> message(a, b) end
-    assert clause.match_specs == expected_specs
+    # expected_specs = match do (a, b) -> message(a, b) end
+    # assert clause.match_specs == expected_specs
   end
 
   test "probe can be created using only match_by option" do
     probe = Probe.new(
             type: :call,
-            in_process: self(),
+            process: self(),
             match_by: global do Map.get(a, b) -> message(a, b) end)
 
     %Probe{} = probe
@@ -135,9 +135,35 @@ defmodule ETrace.Probe.Test do
     assert clause.match_specs == expected_specs
   end
 
+  test "probe can be created using two match_by options" do
+    probe = Probe.new(
+            type: :call,
+            process: self(),
+            match_by: global do Map.get(a, b) -> message(a, b) end,
+            match_by: local do String.split(a, b) -> message(a, b) end)
+
+    %Probe{} = probe
+    assert probe.type == :call
+    assert probe.process_list == [self()]
+    assert probe.flags == [:arity, :timestamp]
+    assert Enum.count(probe.clauses) == 2
+
+    clause = hd(probe.clauses)
+    assert Clause.get_mfa(clause) == {String, :split, 2}
+    assert Clause.get_flags(clause) == [:local]
+    expected_specs = match do (a, b) -> message(a, b) end
+    assert clause.match_specs == expected_specs
+
+    clause = hd(tl(probe.clauses))
+    assert Clause.get_mfa(clause) == {Map, :get, 2}
+    assert Clause.get_flags(clause) == [:global]
+    expected_specs = match do (a, b) -> message(a, b) end
+    assert clause.match_specs == expected_specs
+  end
+
   test "probe can be created using type shortcut" do
     probe = Probe.call(
-            in_process: self(),
+            process: self(),
             match_by: global do Map.get(a, b) -> message(a, b) end)
 
     %Probe{} = probe
@@ -154,7 +180,7 @@ defmodule ETrace.Probe.Test do
 
   test "get_trace_cmds returns the expected command list" do
     probe = Probe.call(
-            in_process: self(),
+            process: self(),
             match_by: global do Map.get(a, b) -> message(a, b) end)
 
     [trace_pattern_cmd, trace_cmd] = Probe.get_trace_cmds(probe)

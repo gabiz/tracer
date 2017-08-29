@@ -60,7 +60,7 @@ defmodule ETrace.Matcher do
   end)
   defp map_elixir_erlang(atom), do: atom
 
-  defp base_match(clauses, outer_vars) do
+  def base_match(clauses, outer_vars) do
     clauses
     |> Enum.reduce(%{mfa: nil, ms: []}, fn({:->, _, clause}, acc) ->
       {head, conds, body, state} = translate_clause(clause, outer_vars)

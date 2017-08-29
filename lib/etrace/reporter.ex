@@ -11,6 +11,7 @@ defmodule ETrace.Reporter do
   defstruct reporter_type: nil,
             reporter_state: nil
 
+  def start([]), do: start(display: [])
   def start([{reporter_type, reporter_options} | _]) do
     initial_state = %Reporter{reporter_type: reporter_type}
     |> reporter_init(reporter_options)
@@ -18,18 +19,17 @@ defmodule ETrace.Reporter do
     spawn_link(fn -> process_loop(initial_state) end)
   end
 
+  def stop(nil), do: :ok
   def stop(pid) when is_pid(pid) do
       send pid, :stop
   end
 
   defp process_loop(%Reporter{} = state) do
     receive do
-      :stop -> exit(:normal)
-      :finish_trace ->
+      :stop ->
         state
         |> reporter_handle_done()
-        |> process_loop()
-        # exit(:normal)
+        exit(:done_reporting)
       trace_event when is_tuple(trace_event) ->
         state
         |> handle_trace_event(trace_event)

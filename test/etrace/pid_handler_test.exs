@@ -31,7 +31,7 @@ defmodule ETrace.PidHandler.Test do
     assert Process.alive?(pid)
     send pid, {:trace, :foo}
     send pid, {:trace_ts, :bar}
-    assert_receive({:EXIT, ^pid, :max_message_count})
+    assert_receive({:EXIT, ^pid, {:max_message_count, 2}})
     refute Process.alive?(pid)
   end
 

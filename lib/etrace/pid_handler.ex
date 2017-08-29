@@ -97,7 +97,7 @@ defmodule ETrace.PidHandler do
     |> Map.put(:message_count, state.message_count + 1)
     |> case do
       %PidHandler{message_count: count, max_message_count: max}
-        when count >= max -> exit(:max_message_count)
+        when count >= max -> exit({:max_message_count, state.max_message_count})
       state -> state
     end
   end
