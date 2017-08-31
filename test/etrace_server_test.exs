@@ -41,7 +41,7 @@ defmodule ETrace.Server.Test do
     assert res == {:error, :not_a_probe}
   end
 
-  test "add_probe() stores the probe in tracer" do
+  test "add_probe() stores the probe in server" do
     {:ok, _} = Server.start()
     probe = Probe.new(type: :call, process: self())
 
@@ -52,7 +52,7 @@ defmodule ETrace.Server.Test do
     assert probes == [probe]
   end
 
-  test "remove_probe() removes a probe from tracer" do
+  test "remove_probe() removes a probe from server" do
     {:ok, _} = Server.start()
     probe = Probe.new(type: :call, process: self())
     :ok = Server.add_probe(probe)

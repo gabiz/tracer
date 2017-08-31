@@ -53,8 +53,9 @@ defmodule ETrace.ProbeList.Test do
       |> ProbeList.valid?()
 
     assert res == {:error, {:invalid_probe, [
-      {:error, :missing_processes, Probe.new(type: :call)},
-      {:error, :missing_processes, Probe.new(type: :send)}]}}
+      {:error, :missing_processes, Probe.new(type: :send)},
+      {:error, :missing_processes, Probe.new(type: :call)}
+      ]}}
   end
 
 end

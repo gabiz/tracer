@@ -7,7 +7,8 @@ defmodule ETrace.ProbeList do
 
   def add_probe(probes, %Probe{} = probe) do
     with false <- Enum.any?(probes, fn p -> p.type == probe.type end) do
-      [probe | probes]
+      # keep order
+      probes ++ [probe]
     else
       _ -> {:error, :duplicate_probe_type}
     end

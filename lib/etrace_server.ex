@@ -3,7 +3,6 @@ defmodule ETrace.Server do
   Orchestrates the tracing session
   """
 
-  # TODO Support multiple reporters
   use GenServer
   alias __MODULE__
   alias ETrace.{AgentCmds, Reporter, Probe, ProbeList}
@@ -77,6 +76,12 @@ defmodule ETrace.Server do
     end
   end
 
+  def set_probe(probe) do
+    ensure_server_up do
+      GenServer.call(@server_name, {:set_probe, probe})
+    end
+  end
+
   def set_nodes(nil) do
     ensure_server_up do
       GenServer.call(@server_name, {:set_nodes, nil})
@@ -127,6 +132,10 @@ defmodule ETrace.Server do
 
   def handle_call(:get_probes, _from, %Server{} = state) do
     {:reply, state.probes, state}
+  end
+
+  def handle_call({:set_probe, nodes}, _from, %Server{} = state) do
+    {:reply, :ok, put_in(state.probes, nodes)}
   end
 
   def handle_call({:set_nodes, nodes}, _from, %Server{} = state) do
@@ -211,11 +220,8 @@ defmodule ETrace.Server do
                    :nodes]
     agents_flags = Enum.filter(opts,
                             fn {key, _} -> Enum.member?(agents_keys, key) end)
-    reporter_flags = opts
-    |> Keyword.delete(:max_tracing_time)
-    |> Keyword.delete(:max_message_count)
-    |> Keyword.delete(:max_message_queue_size)
-    |> Keyword.delete(:nodes)
+    reporter_flags = Enum.filter(opts,
+                            fn {key, _} -> !Enum.member?(agents_keys, key) end)
     {agents_flags, reporter_flags}
   end
 

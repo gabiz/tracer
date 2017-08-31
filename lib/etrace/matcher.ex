@@ -8,6 +8,12 @@ defmodule ETrace.Matcher do
   tuples.
   Body logic has been adapted to support tracing commands
   """
+  alias ETrace.Matcher
+
+  defstruct desc: "",
+            mfa: nil,
+            ms: [],
+            flags: []
 
   @bool_functions [
   :is_atom, :is_float, :is_integer, :is_list, :is_number, :is_pid, :is_port,
@@ -62,7 +68,7 @@ defmodule ETrace.Matcher do
 
   def base_match(clauses, outer_vars) do
     clauses
-    |> Enum.reduce(%{mfa: nil, ms: []}, fn({:->, _, clause}, acc) ->
+    |> Enum.reduce(%Matcher{}, fn({:->, _, clause}, acc) ->
       {head, conds, body, state} = translate_clause(clause, outer_vars)
       acc = if Map.get(state, :mod) != nil do
         clause_mfa = {state.mod, state.fun, state.arity}

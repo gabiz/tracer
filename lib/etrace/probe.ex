@@ -6,28 +6,37 @@ defmodule ETrace.Probe do
   alias __MODULE__
   alias ETrace.Clause
 
-  @valid_types [:call, :procs, :gc, :sched, :send, :receive]
+  @valid_types [:call, :procs, :gc, :sched, :send, :receive,
+                :set_on_spawn, :set_on_first_spawn,
+                :set_on_link, :set_on_first_link]
   @flag_map %{
     call: :call,
     procs: :procs,
     sched: :running,
     send: :send,
-    receive: :receive
+    receive: :receive,
+    gc: :garbage_collection,
+    set_on_spawn: :set_on_spawn,
+    set_on_first_spawn: :set_on_first_spawn,
+    set_on_link: :set_on_link,
+    set_on_first_link: :set_on_first_link
   }
 
   @new_options [
-    :type, :process, :with_fun, :filter_by, :match_by
+    :type, :process, :with_fun, :match_by
   ]
 
   defstruct type: nil,
             process_list: [],
             clauses: [],
             enabled?: true,
-            flags: [:arity, :timestamp]
+            flags: []
 
   def new(opts) when is_list(opts) do
     if Keyword.fetch(opts, :type) != :error do
-      Enum.reduce(opts, %Probe{}, fn {field, val}, probe ->
+      Enum.reduce(opts,
+                  %Probe{flags: default_flags(opts)},
+                  fn {field, val}, probe ->
         cond do
           is_tuple(probe) and elem(probe, 0) == :error -> probe
           !Enum.member?(@new_options, field) ->
@@ -41,12 +50,20 @@ defmodule ETrace.Probe do
     end
   end
 
-  # Generate functions Probe.call, Probe.process, ...
-  @valid_types |> Enum.each(fn type ->
-    def unquote(type)(opts) when is_list(opts) do
-      Probe.new([{:type, unquote(type)} | opts])
+  defp default_flags(opts) do
+    if Keyword.get(opts, :type) == :call do
+      [:arity, :timestamp]
+    else
+      [:timestamp]
     end
-  end)
+  end
+
+  # Generate functions Probe.call, Probe.process, ...
+  # @valid_types |> Enum.each(fn type ->
+  #   def unquote(type)(opts) when is_list(opts) do
+  #     Probe.new([{:type, unquote(type)} | opts])
+  #   end
+  # end)
 
   def get_type(probe) do
     probe.type
@@ -160,7 +177,11 @@ defmodule ETrace.Probe do
 
   [:arity, :timestamp] |> Enum.each(fn flag ->
     def unquote(flag)(probe, enable) when is_boolean(enable) do
-      flag(probe, unquote(flag), enable)
+      if probe.type == :call do
+        flag(probe, unquote(flag), enable)
+      else
+        {:error, :not_a_call_probe}
+      end
     end
   end)
 

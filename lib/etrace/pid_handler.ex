@@ -4,6 +4,7 @@ defmodule ETrace.PidHandler do
   It passes them to the event_callback once received
   """
   alias __MODULE__
+  import ETrace.Macros
 
   @default_max_message_count  1000
   @default_max_message_queue_size 1000
@@ -12,11 +13,6 @@ defmodule ETrace.PidHandler do
             max_message_count: @default_max_message_count,
             max_message_queue_size: @default_max_message_queue_size,
             event_callback: nil
-
-  # pipe helper
-  defmacro tuple_x_and_fx(x, term) do
-    quote do: {unquote(x), unquote(x) |> unquote(term)}
-  end
 
   def start(opts) when is_list(opts) do
     initial_state = opts

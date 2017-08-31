@@ -1,6 +1,7 @@
 defmodule ETrace.Matcher.Test do
   use ExUnit.Case
 
+  alias ETrace.Matcher
   import ETrace.Matcher
 
   test "no params" do
@@ -94,7 +95,7 @@ defmodule ETrace.Matcher.Test do
 
   test "global with erlang module and any function" do
     res = global do :lists._ -> :foo end
-    assert res == %{flags: [:global],
+    assert res == %Matcher{flags: [:global],
                     mfa: {:lists, :_, :_},
                     ms: [{:_, [], [:foo]}],
                     desc: "global do :lists._() -> :foo end"
@@ -103,7 +104,7 @@ defmodule ETrace.Matcher.Test do
 
   test "global with erlang module and any arity" do
     res = global do :lists.sum -> :foo end
-    assert res == %{flags: [:global],
+    assert res == %Matcher{flags: [:global],
                     mfa: {:lists, :sum, :_},
                     ms: [{:_, [], [:foo]}],
                     desc: "global do :lists.sum() -> :foo end"
@@ -112,7 +113,7 @@ defmodule ETrace.Matcher.Test do
 
   test "global with erlang module and function" do
     res = global do :lists.max(a) -> :foo end
-    assert res == %{flags: [:global],
+    assert res == %Matcher{flags: [:global],
                     mfa: {:lists, :max, 1},
                     ms: [{[:"$1"], [], [:foo]}],
                     desc: "global do :lists.max(a) -> :foo end"
@@ -121,7 +122,7 @@ defmodule ETrace.Matcher.Test do
 
   test "global with Module._ mfa" do
     res = global do Map._ -> :foo end
-    assert res == %{flags: [:global],
+    assert res == %Matcher{flags: [:global],
                     mfa: {Map, :_, :_},
                     ms: [{:_, [], [:foo]}],
                     desc: "global do Map._() -> :foo end"
@@ -130,7 +131,7 @@ defmodule ETrace.Matcher.Test do
 
   test "global with don't care mfa" do
     res = global do _ -> :foo end
-    assert res == %{flags: [:global],
+    assert res == %Matcher{flags: [:global],
                     mfa: {:_, :_, :_},
                     ms: [{:_, [], [:foo]}],
                     desc: "global do _ -> :foo end"
@@ -139,7 +140,7 @@ defmodule ETrace.Matcher.Test do
 
   test "global with count including bindings" do
     res = global do Map.get(a, b) -> count(a, b) end
-    assert res == %{flags: [:global],
+    assert res == %Matcher{flags: [:global],
                     mfa: {Map, :get, 2},
                     ms: [{[:"$1", :"$2"], [],
                       [message: [[:_cmd, :count], [:a, :"$1"], [:b, :"$2"]]]}],
@@ -149,7 +150,7 @@ defmodule ETrace.Matcher.Test do
 
   test "local with count including bindings" do
     res = local do Map.get(a, b) -> count(a, b) end
-    assert res == %{flags: [:local],
+    assert res == %Matcher{flags: [:local],
                     mfa: {Map, :get, 2},
                     ms: [{[:"$1", :"$2"], [],
                       [message: [[:_cmd, :count], [:a, :"$1"], [:b, :"$2"]]]}],

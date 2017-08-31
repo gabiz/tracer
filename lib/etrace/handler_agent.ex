@@ -6,6 +6,7 @@ as it processes events.
 """
   alias __MODULE__
   alias ETrace.PidHandler
+  import ETrace.Macros
 
   @default_max_tracing_time 30_000
 
@@ -26,10 +27,6 @@ as it processes events.
 
   def stop(pid) do
     send pid, :stop
-  end
-
-  defmacro assign_to(res, target) do
-    quote do: unquote(target) = unquote(res)
   end
 
   defp process_opts(state, opts) do
