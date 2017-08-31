@@ -1,20 +1,20 @@
-defmodule ETrace.Reporter do
+defmodule ETrace.ToolServer do
   @moduledoc """
-  The Reporter module has a process that receives the events from the
+  The ToolServer module has a process that receives the events from the
   pid_handler and reports the events.
   """
 
   alias __MODULE__
   alias ETrace.{Event, EventCall, EventReturnTo, EventReturnFrom,
-                ReporterRouter}
+                ToolRouter}
 
-  defstruct reporter_type: nil,
-            reporter_state: nil
+  defstruct tool_type: nil,
+            tool_state: nil
 
   def start([]), do: start(display: [])
-  def start([{reporter_type, reporter_options} | _]) do
-    initial_state = %Reporter{reporter_type: reporter_type}
-    |> reporter_init(reporter_options)
+  def start([{tool_type, tool_options} | _]) do
+    initial_state = %ToolServer{tool_type: tool_type}
+    |> tool_init(tool_options)
 
     spawn_link(fn -> process_loop(initial_state) end)
   end
@@ -24,11 +24,11 @@ defmodule ETrace.Reporter do
       send pid, :stop
   end
 
-  defp process_loop(%Reporter{} = state) do
+  defp process_loop(%ToolServer{} = state) do
     receive do
       :stop ->
         state
-        |> reporter_handle_done()
+        |> tool_handle_done()
         exit(:done_reporting)
       trace_event when is_tuple(trace_event) ->
         state
@@ -63,25 +63,25 @@ defmodule ETrace.Reporter do
       _other ->
         %Event{event: trace_event}
     end
-    |> reporter_handle_event(state)
+    |> tool_handle_event(state)
   end
 
-  defp reporter_init(state, opts) do
-    reporter = ReporterRouter.router(state.reporter_type)
-    reporter_state = reporter.init(opts)
-    Map.put(state, :reporter_state, reporter_state)
+  defp tool_init(state, opts) do
+    tool = ToolRouter.router(state.tool_type)
+    tool_state = tool.init(opts)
+    Map.put(state, :tool_state, tool_state)
   end
 
-  defp reporter_handle_event(event, state) do
-    reporter = ReporterRouter.router(state.reporter_type)
-    reporter_state = reporter.handle_event(event, state.reporter_state)
-    Map.put(state, :reporter_state, reporter_state)
+  defp tool_handle_event(event, state) do
+    tool = ToolRouter.router(state.tool_type)
+    tool_state = tool.handle_event(event, state.tool_state)
+    Map.put(state, :tool_state, tool_state)
   end
 
-  defp reporter_handle_done(state) do
-    reporter = ReporterRouter.router(state.reporter_type)
-    reporter_state = reporter.handle_done(state.reporter_state)
-    Map.put(state, :reporter_state, reporter_state)
+  defp tool_handle_done(state) do
+    tool = ToolRouter.router(state.tool_type)
+    tool_state = tool.handle_done(state.tool_state)
+    Map.put(state, :tool_state, tool_state)
   end
 
   defp now do

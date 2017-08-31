@@ -5,10 +5,10 @@ defmodule ETrace.Server do
 
   use GenServer
   alias __MODULE__
-  alias ETrace.{AgentCmds, Reporter, Probe, ProbeList}
+  alias ETrace.{AgentCmds, ToolServer, Probe, ProbeList}
 
   @server_name __MODULE__
-  defstruct reporter_pid: nil,
+  defstruct tool_server_pid: nil,
             tracing: false,
             forward_pid: nil,
             probes: [],
@@ -144,19 +144,19 @@ defmodule ETrace.Server do
 
   def handle_call({:start_trace, opts}, _from, %Server{} = state) do
     with  state = %Server{} <- stop_if_tracing(state),
-          {agents_flags, reporter_flags} <- split_flags(opts),
-          {:ok, forward_pid, rf} <- update_report_fun(reporter_flags),
+          {agents_flags, tools_flags} <- split_flags(opts),
+          {:ok, forward_pid, rf} <- update_report_fun(tools_flags),
           :ok <- ProbeList.valid?(state.probes),
-          ret when is_pid(ret) <- Reporter.start(rf) do
+          ret when is_pid(ret) <- ToolServer.start(rf) do
       state = state
-      |> Map.put(:reporter_pid, ret)
+      |> Map.put(:tool_server_pid, ret)
       |> Map.put(:forward_pid, forward_pid)
 
       nodes = Keyword.get(opts, :nodes, state.nodes)
       {ret, new_state} = case AgentCmds.start(nodes,
                                            state.probes,
-                                           [forward_pid: state.reporter_pid] ++
-                                           agents_flags) do
+                                           [forward_pid: state.tool_server_pid]
+                                              ++ agents_flags) do
         {:error, error} ->
           {{:error, error}, state}
         agent_pids ->
@@ -186,7 +186,7 @@ defmodule ETrace.Server do
 
   def handle_info({:EXIT, _pid, :done_reporting},
       %Server{} = state) do
-    {:noreply, put_in(state.reporter_pid, nil)}
+    {:noreply, put_in(state.tool_server_pid, nil)}
   end
   def handle_info({:EXIT, pid, {:done_tracing, exit_status}},
       %Server{} = state) do
@@ -220,9 +220,9 @@ defmodule ETrace.Server do
                    :nodes]
     agents_flags = Enum.filter(opts,
                             fn {key, _} -> Enum.member?(agents_keys, key) end)
-    reporter_flags = Enum.filter(opts,
+    tools_flags = Enum.filter(opts,
                             fn {key, _} -> !Enum.member?(agents_keys, key) end)
-    {agents_flags, reporter_flags}
+    {agents_flags, tools_flags}
   end
 
   defp update_report_fun(opts) do
@@ -231,9 +231,9 @@ defmodule ETrace.Server do
       pid when is_pid(pid) ->
         new_opts = opts
         |> Keyword.delete(:forward_to)
-        |> Enum.map(fn {reporter_type, reporter_options} ->
-          {reporter_type,
-           [{:report_fun, fn event -> send pid, event end} | reporter_options]}
+        |> Enum.map(fn {tool_type, tool_options} ->
+          {tool_type,
+           [{:report_fun, fn event -> send pid, event end} | tool_options]}
         end)
         {:ok, pid, new_opts}
       _ ->
@@ -261,8 +261,8 @@ defmodule ETrace.Server do
         {:ok, new_state}
     end
 
-    Reporter.stop(state.reporter_pid)
-    state = put_in(state.reporter_pid, nil)
+    ToolServer.stop(state.tool_server_pid)
+    state = put_in(state.tool_server_pid, nil)
 
     {ret, state}
   end

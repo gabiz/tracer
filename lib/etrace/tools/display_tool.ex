@@ -1,4 +1,4 @@
-defmodule ETrace.DisplayReporter do
+defmodule ETrace.DisplayTool do
   @moduledoc """
   Reports display type tracing
   """
@@ -7,7 +7,7 @@ defmodule ETrace.DisplayReporter do
   defstruct report_fun: nil
 
   def init(opts) do
-    %DisplayReporter{report_fun: Keyword.get(opts, :report_fun,
+    %DisplayTool{report_fun: Keyword.get(opts, :report_fun,
                                                     &(IO.puts to_string(&1)))}
   end
 

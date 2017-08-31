@@ -169,12 +169,12 @@ defmodule ETrace.Server.Test do
 
     state = :sys.get_state(ETrace.Server, 100)
     %{tracing: tracing,
-      reporter_pid: reporter_pid,
+      tool_server_pid: tool_server_pid,
       agent_pids: [agent_pid],
       probes: [%{process_list: [^test_pid]}]} = state
     assert tracing
-    assert is_pid(reporter_pid)
-    assert Process.alive?(reporter_pid)
+    assert is_pid(tool_server_pid)
+    assert Process.alive?(tool_server_pid)
     assert is_pid(agent_pid)
     assert Process.alive?(agent_pid)
 
@@ -293,7 +293,7 @@ defmodule ETrace.Server.Test do
      assert_receive {:done_tracing, :max_message_count, 1}
   end
 
-  test "trace with a count reporter" do
+  test "trace with a count tool" do
     test_pid = self()
 
     {:ok, _} = Server.start()
@@ -317,7 +317,7 @@ defmodule ETrace.Server.Test do
     res = Server.stop_trace()
     assert res == :ok
 
-    assert_receive %ETrace.CountReporter.Event{counts:
+    assert_receive %ETrace.CountTool.Event{counts:
       [{[a: "\"hello world\"", b: "\",\""], 1},
        {[a: "\"z,y\"", b: "\",\""], 2},
        {[a: "\"x,y\"", b: "\",\""], 3}]}
@@ -331,7 +331,7 @@ defmodule ETrace.Server.Test do
   def recur_len([], acc), do: acc
   def recur_len([_h | t], acc), do: recur_len(t, acc + 1)
 
-  test "trace with a duration reporter" do
+  test "trace with a duration tool" do
     test_pid = self()
 
     {:ok, _} = Server.start()
@@ -361,7 +361,7 @@ defmodule ETrace.Server.Test do
     refute_receive(_)
   end
 
-  test "trace with a display reporter" do
+  test "trace with a display tool" do
     test_pid = self()
 
     {:ok, _} = Server.start()
@@ -416,7 +416,7 @@ defmodule ETrace.Server.Test do
     refute_receive(_)
   end
 
-  test "trace with a call_seq reporter" do
+  test "trace with a call_seq tool" do
     test_pid = self()
 
     {:ok, _} = Server.start()
@@ -436,18 +436,18 @@ defmodule ETrace.Server.Test do
     res = Server.stop_trace()
     assert res == :ok
 
-    assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 0, fun: :recur_len, message: [[:list, [1, 2, 3, 4, 5]], [:val, 0]], mod: ETrace.Server.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 1, fun: :recur_len, message: [[:list, [2, 3, 4, 5]], [:val, 1]], mod: ETrace.Server.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 2, fun: :recur_len, message: [[:list, [3, 4, 5]], [:val, 2]], mod: ETrace.Server.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 3, fun: :recur_len, message: [[:list, [4, 5]], [:val, 3]], mod: ETrace.Server.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 4, fun: :recur_len, message: [[:list, [5]], [:val, 4]], mod: ETrace.Server.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 5, fun: :recur_len, message: [[:list, []], [:val, 5]], mod: ETrace.Server.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 5, fun: :recur_len, message: nil, mod: ETrace.Server.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 4, fun: :recur_len, message: nil, mod: ETrace.Server.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 3, fun: :recur_len, message: nil, mod: ETrace.Server.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 2, fun: :recur_len, message: nil, mod: ETrace.Server.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 1, fun: :recur_len, message: nil, mod: ETrace.Server.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %ETrace.CallSeqReporter.Event{arity: 2, depth: 0, fun: :recur_len, message: nil, mod: ETrace.Server.Test, pid: _, return_value: 5, type: :exit}
+    assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 0, fun: :recur_len, message: [[:list, [1, 2, 3, 4, 5]], [:val, 0]], mod: ETrace.Server.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 1, fun: :recur_len, message: [[:list, [2, 3, 4, 5]], [:val, 1]], mod: ETrace.Server.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 2, fun: :recur_len, message: [[:list, [3, 4, 5]], [:val, 2]], mod: ETrace.Server.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 3, fun: :recur_len, message: [[:list, [4, 5]], [:val, 3]], mod: ETrace.Server.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 4, fun: :recur_len, message: [[:list, [5]], [:val, 4]], mod: ETrace.Server.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 5, fun: :recur_len, message: [[:list, []], [:val, 5]], mod: ETrace.Server.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 5, fun: :recur_len, message: nil, mod: ETrace.Server.Test, pid: _, return_value: 5, type: :exit}
+    assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 4, fun: :recur_len, message: nil, mod: ETrace.Server.Test, pid: _, return_value: 5, type: :exit}
+    assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 3, fun: :recur_len, message: nil, mod: ETrace.Server.Test, pid: _, return_value: 5, type: :exit}
+    assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 2, fun: :recur_len, message: nil, mod: ETrace.Server.Test, pid: _, return_value: 5, type: :exit}
+    assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 1, fun: :recur_len, message: nil, mod: ETrace.Server.Test, pid: _, return_value: 5, type: :exit}
+    assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 0, fun: :recur_len, message: nil, mod: ETrace.Server.Test, pid: _, return_value: 5, type: :exit}
 
     assert_receive {:done_tracing, :stop_command}
 
