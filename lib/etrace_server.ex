@@ -6,13 +6,15 @@ defmodule ETrace.Server do
   # TODO Support multiple reporters
   use GenServer
   alias __MODULE__
-  alias ETrace.{Tracer, Reporter, Probe}
+  alias ETrace.{AgentCmds, Reporter, Probe, ProbeList}
 
   @server_name __MODULE__
-  defstruct tracer: nil,
-            reporter_pid: nil,
+  defstruct reporter_pid: nil,
             tracing: false,
-            forward_pid: nil
+            forward_pid: nil,
+            probes: [],
+            nodes: [],
+            agent_pids: []
 
   defmacro ensure_server_up(do: clauses) do
     quote do
@@ -76,70 +78,67 @@ defmodule ETrace.Server do
   end
   def init(_params) do
     Process.flag(:trap_exit, true)
-    {:ok, %Server{tracer: Tracer.new()}}
+    {:ok, %Server{}}
   end
 
   def handle_call({:add_probe, probe}, _from, %Server{} = state) do
-    {ret, new_state} = case Tracer.add_probe(state.tracer, probe) do
-      %Tracer{} = tracer ->
-        {:ok, put_in(state.tracer, tracer)}
-      error ->
-        {error, state}
+    {ret, new_state} = case ProbeList.add_probe(state.probes, probe) do
+      {:error, error} ->
+        {{:error, error}, state}
+      probe_list when is_list(probe_list) ->
+        {:ok, put_in(state.probes, probe_list)}
     end
 
     {:reply, ret, new_state}
   end
 
   def handle_call({:remove_probe, probe}, _from, %Server{} = state) do
-    {ret, new_state} = case Tracer.remove_probe(state.tracer, probe) do
-      %Tracer{} = tracer ->
-        {:ok, put_in(state.tracer, tracer)}
-      error ->
-        {error, state}
+    {ret, new_state} = case ProbeList.remove_probe(state.probes, probe) do
+      {:error, error} ->
+        {{:error, error}, state}
+      probe_list when is_list(probe_list) ->
+        {:ok, put_in(state.probes, probe_list)}
     end
 
     {:reply, ret, new_state}
   end
 
   def handle_call(:clear_probes, _from, %Server{} = state) do
-    {ret, new_state} = case Tracer.clear_probes(state.tracer) do
-      %Tracer{} = tracer ->
-        {:ok, put_in(state.tracer, tracer)}
-      error ->
-        {error, state}
-    end
-
-    {:reply, ret, new_state}
+    {:reply, :ok, put_in(state.probes, [])}
   end
 
   def handle_call(:get_probes, _from, %Server{} = state) do
-    probes = Tracer.probes(state.tracer)
-    {:reply, probes, state}
+    {:reply, state.probes, state}
   end
 
   def handle_call({:start_trace, opts}, _from, %Server{} = state) do
     with  state = %Server{} <- stop_if_tracing(state),
-          {tracer_flags, reporter_flags} <- split_flags(opts),
+          {agents_flags, reporter_flags} <- split_flags(opts),
           {:ok, forward_pid, rf} <- update_report_fun(reporter_flags),
-          :ok <- Tracer.valid?(state.tracer),
+          :ok <- ProbeList.valid?(state.probes),
           ret when is_pid(ret) <- Reporter.start(rf) do
       state = state
       |> Map.put(:reporter_pid, ret)
       |> Map.put(:forward_pid, forward_pid)
 
-      {ret, new_state} = case Tracer.start(state.tracer,
+      nodes = Keyword.get(opts, :nodes)
+      {ret, new_state} = case AgentCmds.start(nodes,
+                                           state.probes,
                                            [forward_pid: state.reporter_pid] ++
-                                           tracer_flags) do
-        %Tracer{} = tracer ->
+                                           agents_flags) do
+        {:error, error} ->
+          {{:error, error}, state}
+        agent_pids ->
           new_state = state
-          |> Map.put(:tracer, tracer)
+          |> Map.put(:agent_pids, agent_pids)
+          |> Map.put(:nodes, nodes)
           |> Map.put(:tracing, true)
+          # TODO get a notification from agents in the future
+          :timer.sleep(5)
           report_message(state,
                          :started_tracing,
                          "started tracing")
           {:ok, new_state}
-        error ->
-          {error, state}
       end
 
       {:reply, ret, new_state}
@@ -184,18 +183,18 @@ defmodule ETrace.Server do
   end
 
   defp split_flags(opts) do
-    tracer_keys = [:max_tracing_time,
+    agents_keys = [:max_tracing_time,
                    :max_message_count,
                    :max_message_queue_size,
                    :nodes]
-    tracer_flags = Enum.filter(opts,
-                            fn {key, _} -> Enum.member?(tracer_keys, key) end)
+    agents_flags = Enum.filter(opts,
+                            fn {key, _} -> Enum.member?(agents_keys, key) end)
     reporter_flags = opts
     |> Keyword.delete(:max_tracing_time)
     |> Keyword.delete(:max_message_count)
     |> Keyword.delete(:max_message_queue_size)
     |> Keyword.delete(:nodes)
-    {tracer_flags, reporter_flags}
+    {agents_flags, reporter_flags}
   end
 
   defp update_report_fun(opts) do
@@ -223,14 +222,15 @@ defmodule ETrace.Server do
   end
 
   defp handle_stop_trace(state) do
-    {ret, state} = case Tracer.stop(state.tracer) do
-      %Tracer{} = tracer ->
+    {ret, state} = case AgentCmds.stop(state.agent_pids) do
+      {:error, error} ->
+        {{:error, error}, state}
+      _ ->
         new_state = state
-        |> Map.put(:tracer, tracer)
+        |> Map.put(:agent_pids, [])
+        |> Map.put(:nodes, [])
         |> Map.put(:tracing, false)
         {:ok, new_state}
-      error ->
-        {error, state}
     end
 
     Reporter.stop(state.reporter_pid)
@@ -240,8 +240,8 @@ defmodule ETrace.Server do
   end
 
   defp handle_agent_exit(state, pid) do
-    agent_pids = state.tracer.agent_pids -- [pid]
-    state = put_in(state.tracer.agent_pids, agent_pids)
+    agent_pids = state.agent_pids -- [pid]
+    state = put_in(state.agent_pids, agent_pids)
     if Enum.empty?(agent_pids) do
       {_ret, state} = handle_stop_trace(state)
       state
