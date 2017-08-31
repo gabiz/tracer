@@ -98,6 +98,7 @@ defmodule ETrace.HandlerAgent.Test do
     refute Process.alive?(handler_pid)
   end
 
+  @tag :remote_node
   test "start agent_handler in remote node" do
     :net_kernel.start([:"local@127.0.0.1"])
 

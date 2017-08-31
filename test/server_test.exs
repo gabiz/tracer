@@ -206,6 +206,7 @@ defmodule ETrace.ServerTest do
      assert_receive {:done_tracing, :max_message_count, 1}
   end
 
+  @tag :remote_node
   test "start_trace() allows to start on a remote node" do
     :net_kernel.start([:"local2@127.0.0.1"])
 
