@@ -85,11 +85,11 @@ defmodule ETrace.Matcher.Test do
                   [[:_cmd, :count], [:a, :"$1"], [:b, :"$2"], [:c, :"$3"]]}] }]
   end
 
-  test "body without statements" do
-    ms = match do (a, b, c) -> end
+  test "body with :ok statement" do
+    ms = match do (a, b, c) -> :ok end
     assert ms == [{[:"$1", :"$2", :"$3"],
                   [],
-                  [] }]
+                  [:ok] }]
   end
 
   test "global with erlang module and any function" do

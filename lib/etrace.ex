@@ -33,6 +33,10 @@ defmodule ETrace do
     Server.add_probe(probe)
   end
 
+  def set_nodes(nodes) do
+    Server.set_nodes(nodes)
+  end
+
   def start_trace(opts \\ [display: []]) do
     probe_keys = [:type,
                   :process,

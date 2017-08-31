@@ -13,7 +13,7 @@ defmodule ETrace.Server do
             tracing: false,
             forward_pid: nil,
             probes: [],
-            nodes: [],
+            nodes: nil,
             agent_pids: []
 
   defmacro ensure_server_up(do: clauses) do
@@ -76,6 +76,24 @@ defmodule ETrace.Server do
       GenServer.call(@server_name, {:remove_probe, probe})
     end
   end
+
+  def set_nodes(nil) do
+    ensure_server_up do
+      GenServer.call(@server_name, {:set_nodes, nil})
+    end
+  end
+  def set_nodes([]), do: set_nodes(nil)
+  def set_nodes(nodes) when is_list(nodes) do
+    if Enum.any?(nodes, fn n -> !is_atom(n) end) do
+        {:error, :not_a_node}
+    else
+      ensure_server_up do
+        GenServer.call(@server_name, {:set_nodes, nodes})
+      end
+    end
+  end
+  def set_nodes(node), do: set_nodes([node])
+
   def init(_params) do
     Process.flag(:trap_exit, true)
     {:ok, %Server{}}
@@ -111,6 +129,10 @@ defmodule ETrace.Server do
     {:reply, state.probes, state}
   end
 
+  def handle_call({:set_nodes, nodes}, _from, %Server{} = state) do
+    {:reply, :ok, put_in(state.nodes, nodes)}
+  end
+
   def handle_call({:start_trace, opts}, _from, %Server{} = state) do
     with  state = %Server{} <- stop_if_tracing(state),
           {agents_flags, reporter_flags} <- split_flags(opts),
@@ -121,7 +143,7 @@ defmodule ETrace.Server do
       |> Map.put(:reporter_pid, ret)
       |> Map.put(:forward_pid, forward_pid)
 
-      nodes = Keyword.get(opts, :nodes)
+      nodes = Keyword.get(opts, :nodes, state.nodes)
       {ret, new_state} = case AgentCmds.start(nodes,
                                            state.probes,
                                            [forward_pid: state.reporter_pid] ++

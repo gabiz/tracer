@@ -91,6 +91,55 @@ defmodule ETrace.Server.Test do
     assert probes == []
   end
 
+  test "set_nodes() fails of not passed atoms" do
+    {:ok, _} = Server.start()
+
+    res = Server.set_nodes(["Hello World"])
+    assert res == {:error, :not_a_node}
+  end
+
+  test "set_nodes() sets the nodes the server" do
+    {:ok, _} = Server.start()
+
+    res = Server.set_nodes([:"node@127.0.0.1", :"node2@127.0.0.1"])
+    assert res == :ok
+
+    %{nodes: nodes} = :sys.get_state(ETrace.Server, 100)
+    assert nodes == [:"node@127.0.0.1", :"node2@127.0.0.1"]
+  end
+
+  test "set_nodes() accepts a single node" do
+    {:ok, _} = Server.start()
+
+    res = Server.set_nodes(:"node@127.0.0.1")
+    assert res == :ok
+
+    %{nodes: nodes} = :sys.get_state(ETrace.Server, 100)
+    assert nodes == [:"node@127.0.0.1"]
+  end
+
+  test "set_nodes() replaces previous node setting" do
+    {:ok, _} = Server.start()
+
+    :ok = Server.set_nodes(:"node@127.0.0.1")
+    res = Server.set_nodes(:"node2@127.0.0.1")
+    assert res == :ok
+
+    %{nodes: nodes} = :sys.get_state(ETrace.Server, 100)
+    assert nodes == [:"node2@127.0.0.1"]
+  end
+
+  test "set_nodes() accepts nil to clear nodes" do
+    {:ok, _} = Server.start()
+
+    :ok = Server.set_nodes(:"node@127.0.0.1")
+    res = Server.set_nodes(nil)
+    assert res == :ok
+
+    %{nodes: nodes} = :sys.get_state(ETrace.Server, 100)
+    assert nodes == nil
+  end
+
   test "start_trace() fails if no probes have been configured" do
     {:ok, _} = Server.start()
     res = Server.start_trace([])
