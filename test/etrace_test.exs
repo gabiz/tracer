@@ -21,16 +21,17 @@ defmodule ETrace.Test do
     assert Process.alive?(pid)
     test_pid = self()
 
-    ETrace.add_probe(ETrace.probe(type: :call, process: :all,
+    tool = ETrace.tool(:display, forward_to: test_pid)
+    |> ETrace.Tool.add_probe(ETrace.probe(type: :call, process: :all,
                                   match_by: local do Map.new() -> :ok end))
-    ETrace.add_probe(ETrace.probe(type: :gc, process: self()))
-    ETrace.add_probe(ETrace.probe(type: :set_on_link, process: [self()]))
-    ETrace.add_probe(ETrace.probe(type: :procs, process: [self()]))
-    ETrace.add_probe(ETrace.probe(type: :receive, process: [self()]))
-    ETrace.add_probe(ETrace.probe(type: :send, process: [self()]))
-    ETrace.add_probe(ETrace.probe(type: :sched, process: [self()]))
+    |> ETrace.Tool.add_probe(ETrace.probe(type: :gc, process: self()))
+    |> ETrace.Tool.add_probe(ETrace.probe(type: :set_on_link, process: [self()]))
+    |> ETrace.Tool.add_probe(ETrace.probe(type: :procs, process: [self()]))
+    |> ETrace.Tool.add_probe(ETrace.probe(type: :receive, process: [self()]))
+    |> ETrace.Tool.add_probe(ETrace.probe(type: :send, process: [self()]))
+    |> ETrace.Tool.add_probe(ETrace.probe(type: :sched, process: [self()]))
 
-    probes = ETrace.get_probes()
+    probes = ETrace.Tool.get_probes(tool)
     assert probes ==
             [
               %ETrace.Probe{enabled?: true, flags: [:arity, :timestamp],
@@ -60,10 +61,7 @@ defmodule ETrace.Test do
               process_list: [test_pid], type: :sched}
             ]
 
-      # ETrace.start_trace(display: [], forward_to: self())
-
-      ETrace.Tool.new(:display, forward_to: test_pid, probes: probes)
-      |> ETrace.start_tool()
+      ETrace.start_tool(tool)
 
       %{tracing: true} = :sys.get_state(ETrace.Server, 100)
 
@@ -99,7 +97,7 @@ defmodule ETrace.Test do
     Map.new()
 
     assert_receive :started_tracing
-    res = stop_trace()
+    res = stop_tool()
     assert res == :ok
 
     assert_receive %ETrace.EventCall{arity: 0, fun: :new, message: nil,
@@ -137,7 +135,7 @@ defmodule ETrace.Test do
     Map.new(%{b: :bar})
 
     assert_receive :started_tracing
-    res = stop_trace()
+    res = stop_tool()
     assert res == :ok
 
     assert_receive %ETrace.CountTool.Event{counts:
@@ -174,7 +172,7 @@ defmodule ETrace.Test do
     assert_receive(%{pid: ^test_pid, mod: ETrace.Test, fun: :recur_len,
         arity: 2, duration: _, message: [[:list, [1, 2, 3, 5]], [:val, 2]]})
 
-    res = stop_trace()
+    res = stop_tool()
     assert res == :ok
 
     assert_receive {:done_tracing, :stop_command}
@@ -198,7 +196,7 @@ defmodule ETrace.Test do
     recur_len([1, 2, 3, 4, 5], 0)
 
     :timer.sleep(10)
-    res = stop_trace()
+    res = stop_tool()
     assert res == :ok
 
     assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 0, fun: :recur_len, message: [[:list, [1, 2, 3, 4, 5]], [:val, 0]], mod: ETrace.Test, pid: _, return_value: nil, type: :enter}

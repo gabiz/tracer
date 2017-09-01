@@ -35,134 +35,12 @@ defmodule ETrace.Server.Test do
     refute Process.alive?(pid)
   end
 
-  test "add_probe() fails when not passing a probe" do
-    {:ok, _} = Server.start()
-    res = Server.add_probe(:foo)
-    assert res == {:error, :not_a_probe}
-  end
-
-  test "add_probe() stores the probe in server" do
-    {:ok, _} = Server.start()
-    probe = Probe.new(type: :call, process: self())
-
-    res = Server.add_probe(probe)
-    assert res == :ok
-
-    %{probes: probes} = :sys.get_state(ETrace.Server, 100)
-    assert probes == [probe]
-  end
-
-  test "remove_probe() removes a probe from server" do
-    {:ok, _} = Server.start()
-    probe = Probe.new(type: :call, process: self())
-    :ok = Server.add_probe(probe)
-
-    res = Server.remove_probe(probe)
-    assert res == :ok
-
-    %{probes: probes} = :sys.get_state(ETrace.Server, 100)
-    assert probes == []
-  end
-
-  test "remove_probe() does nothing if probe is not found" do
-    {:ok, _} = Server.start()
-    probe = Probe.new(type: :call, process: self())
-    :ok = Server.add_probe(probe)
-    state = :sys.get_state(ETrace.Server, 100)
-
-    res = Server.remove_probe(Probe.new(type: :procs, process: self()))
-    assert res == :ok
-
-    new_state = :sys.get_state(ETrace.Server, 100)
-    assert new_state == state
-  end
-
-  test "clear_probes() removes all probes" do
-    {:ok, _} = Server.start()
-    probe = Probe.new(type: :call, process: self())
-    :ok = Server.add_probe(probe)
-    probe2 = Probe.new(type: :procs, process: self())
-    :ok = Server.add_probe(probe2)
-
-    res = Server.clear_probes()
-    assert res == :ok
-
-    %{probes: probes} = :sys.get_state(ETrace.Server, 100)
-    assert probes == []
-  end
-
-  test "set_nodes() fails of not passed atoms" do
-    {:ok, _} = Server.start()
-
-    res = Server.set_nodes(["Hello World"])
-    assert res == {:error, :not_a_node}
-  end
-
-  test "set_nodes() sets the nodes the server" do
-    {:ok, _} = Server.start()
-
-    res = Server.set_nodes([:"node@127.0.0.1", :"node2@127.0.0.1"])
-    assert res == :ok
-
-    %{nodes: nodes} = :sys.get_state(ETrace.Server, 100)
-    assert nodes == [:"node@127.0.0.1", :"node2@127.0.0.1"]
-  end
-
-  test "set_nodes() accepts a single node" do
-    {:ok, _} = Server.start()
-
-    res = Server.set_nodes(:"node@127.0.0.1")
-    assert res == :ok
-
-    %{nodes: nodes} = :sys.get_state(ETrace.Server, 100)
-    assert nodes == [:"node@127.0.0.1"]
-  end
-
-  test "set_nodes() replaces previous node setting" do
-    {:ok, _} = Server.start()
-
-    :ok = Server.set_nodes(:"node@127.0.0.1")
-    res = Server.set_nodes(:"node2@127.0.0.1")
-    assert res == :ok
-
-    %{nodes: nodes} = :sys.get_state(ETrace.Server, 100)
-    assert nodes == [:"node2@127.0.0.1"]
-  end
-
-  test "set_nodes() accepts nil to clear nodes" do
-    {:ok, _} = Server.start()
-
-    :ok = Server.set_nodes(:"node@127.0.0.1")
-    res = Server.set_nodes(nil)
-    assert res == :ok
-
-    %{nodes: nodes} = :sys.get_state(ETrace.Server, 100)
-    assert nodes == nil
-  end
-
-  test "start_trace() fails if no probes have been configured" do
-    {:ok, _} = Server.start()
-    res = Server.start_trace([])
-    assert res == {:error, :missing_probes}
-  end
-
-  test "add_probe() fails if probe is not complete" do
-    {:ok, _} = Server.start()
-    probe = Probe.new(type: :call)
-    res = Server.add_probe(probe)
-    assert res == {:error, :missing_processes}
-
-    %{probes: probes} = :sys.get_state(ETrace.Server, 100)
-    assert probes == []
-  end
-
   test "start_tool() starts a trace" do
     test_pid = self()
     {:ok, _} = Server.start()
     probe = Probe.new(type: :call,
                       process: self(),
                       match_by: local do Map.new(a) -> message(a) end)
-    :ok = Server.add_probe(probe)
 
     tool = Tool.new(:display, forward_to: test_pid, probe: probe)
     :ok = Server.start_tool(tool)
@@ -202,7 +80,6 @@ defmodule ETrace.Server.Test do
     probe = Probe.new(type: :call,
                       process: self(),
                       match_by: local do Map.new(a) -> message(a) end)
-    :ok = Server.add_probe(probe)
     tool = Tool.new(:display, forward_to: test_pid, probe: probe)
     :ok = Server.start_tool(tool)
 
@@ -321,7 +198,7 @@ defmodule ETrace.Server.Test do
     String.split("x,y", ",")
 
     assert_receive :started_tracing
-    res = Server.stop_trace()
+    res = Server.stop_tool()
     assert res == :ok
 
     assert_receive %ETrace.CountTool.Event{counts:
@@ -360,7 +237,7 @@ defmodule ETrace.Server.Test do
     assert_receive(%{pid: ^test_pid, mod: ETrace.Server.Test, fun: :recur_len,
         arity: 2, duration: _, message: [[:list, [1, 2, 3, 5]], [:val, 2]]})
 
-    res = Server.stop_trace()
+    res = Server.stop_tool()
     assert res == :ok
 
     assert_receive {:done_tracing, :stop_command}
@@ -415,7 +292,7 @@ defmodule ETrace.Server.Test do
     assert_receive(%{pid: ^test_pid, mod: String, fun: :split, arity: 2,
                     return_value: ["a", "b"], ts: _})
 
-    res = Server.stop_trace()
+    res = Server.stop_tool()
     assert res == :ok
 
     assert_receive {:done_tracing, :stop_command}
@@ -440,7 +317,7 @@ defmodule ETrace.Server.Test do
     recur_len([1, 2, 3, 4, 5], 0)
 
     :timer.sleep(10)
-    res = Server.stop_trace()
+    res = Server.stop_tool()
     assert res == :ok
 
     assert_receive %ETrace.CallSeqTool.Event{arity: 2, depth: 0, fun: :recur_len, message: [[:list, [1, 2, 3, 4, 5]], [:val, 0]], mod: ETrace.Server.Test, pid: _, return_value: nil, type: :enter}
