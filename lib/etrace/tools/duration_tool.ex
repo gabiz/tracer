@@ -3,7 +3,8 @@ defmodule ETrace.DurationTool do
   Reports duration type traces
   """
   alias __MODULE__
-  alias ETrace.{EventCall, EventReturnFrom}
+  alias ETrace.{EventCall, EventReturnFrom, Matcher, Probe}
+  use ETrace.Tool
 
   defmodule Event do
     @moduledoc """
@@ -39,13 +40,28 @@ defmodule ETrace.DurationTool do
   end
 
   defstruct durations: %{},
-            stacks: %{},
-            report_fun: nil
+            stacks: %{}
 
   def init(opts) when is_list(opts) do
-    %DurationTool{report_fun: Keyword.get(opts,
-                                              :report_fun,
-                                              &(IO.puts to_string(&1)))}
+    init_state = init_tool(%DurationTool{}, opts)
+
+    # if Keyword.keyword?(:match) do
+    #   raise ArgumentError, message: "must have something to match"
+    # end
+
+    case Keyword.get(opts, :match) do
+      nil -> init_state
+      %Matcher{} = matcher ->
+        ms_with_return_trace = matcher.ms
+        |> Enum.map(fn {head, condit, body} ->
+          {head, condit, [{:return_trace} | body]}
+        end)
+        matcher = put_in(matcher.ms, ms_with_return_trace)
+        probe = Probe.new(type: :call,
+                          process: get_process(init_state),
+                          match_by: matcher)
+        set_probes(init_state, [probe])
+    end
   end
 
   def handle_event(event, state) do
@@ -63,7 +79,8 @@ defmodule ETrace.DurationTool do
         key = inspect(pid)
         case Map.get(state.stacks, key, []) do
           [] ->
-            state.report_fun.("stack empty for #{inspect mod}.#{fun}/#{arity}")
+            report_event(state,
+                         "stack empty for #{inspect mod}.#{fun}/#{arity}")
             state
           # ignore recursion calls
           [{^mod, ^fun, ^arity, _, _},
@@ -73,7 +90,7 @@ defmodule ETrace.DurationTool do
           [{^mod, ^fun, ^arity, entry_ts, c} | poped_stack] ->
             duration = exit_ts - entry_ts
 
-            state.report_fun.(%Event{
+            report_event(state, %Event{
                 duration: duration,
                 pid: pid,
                 mod: mod,
@@ -84,7 +101,7 @@ defmodule ETrace.DurationTool do
 
             put_in(state.stacks, Map.put(state.stacks, key, poped_stack))
           _ ->
-            state.report_fun.("entry point not found for" <>
+            report_event(state, "entry point not found for" <>
                               " #{inspect mod}.#{fun}/#{arity}")
           state
         end

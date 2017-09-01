@@ -2,11 +2,8 @@ defmodule ETrace.Matcher do
   @moduledoc """
   Matcher translate an elixir expression to a tracing matchspec
 
-  This module is based on ericmj's https://github.com/ericmj/ex2ms
+  Initial coded based on ericmj's https://github.com/ericmj/ex2ms
   module for ets matchspecs.
-  Head logic has been rewritten to accept function like headers instead of
-  tuples.
-  Body logic has been adapted to support tracing commands
   """
   alias ETrace.Matcher
 
@@ -68,19 +65,36 @@ defmodule ETrace.Matcher do
 
   def base_match(clauses, outer_vars) do
     clauses
-    |> Enum.reduce(%Matcher{}, fn({:->, _, clause}, acc) ->
-      {head, conds, body, state} = translate_clause(clause, outer_vars)
-      acc = if Map.get(state, :mod) != nil do
-        clause_mfa = {state.mod, state.fun, state.arity}
-        acc_mfa = Map.get(acc, :mfa)
-        if acc_mfa != nil and acc_mfa != clause_mfa do
-          raise ArgumentError, message:
-            "clause mfa #{inspect acc_mfa}" <>
-            " does not match #{inspect clause_mfa}"
-        end
-        Map.put(acc, :mfa, clause_mfa)
-      else acc end
-      Map.put(acc, :ms, acc.ms ++ [{head, conds, body}])
+    |> Enum.reduce(%Matcher{}, fn
+      {:->, _, clause}, acc ->
+        {head, conds, body, state} = translate_clause(clause, outer_vars)
+        acc = if Map.get(state, :mod) != nil do
+          clause_mfa = {state.mod, state.fun, state.arity}
+          acc_mfa = Map.get(acc, :mfa)
+          if acc_mfa != nil and acc_mfa != clause_mfa do
+            raise ArgumentError, message:
+              "clause mfa #{inspect acc_mfa}" <>
+              " does not match #{inspect clause_mfa}"
+          end
+          Map.put(acc, :mfa, clause_mfa)
+        else acc end
+        Map.put(acc, :ms, acc.ms ++ [{head, conds, body}])
+      head, acc ->
+        {head, conds, state} = translate_head([head], outer_vars)
+        acc = if Map.get(state, :mod) != nil do
+          clause_mfa = {state.mod, state.fun, state.arity}
+          acc_mfa = Map.get(acc, :mfa)
+          if acc_mfa != nil and acc_mfa != clause_mfa do
+            raise ArgumentError, message:
+              "clause mfa #{inspect acc_mfa}" <>
+              " does not match #{inspect clause_mfa}"
+          end
+          Map.put(acc, :mfa, clause_mfa)
+        else acc end
+          message = state.vars
+          |> Enum.map(fn {var, key} -> [var, String.to_atom(key)] end)
+          |> Enum.reverse()
+        Map.put(acc, :ms, acc.ms ++ [{head, conds, [message: message]}])
     end)
   end
 
@@ -101,9 +115,31 @@ defmodule ETrace.Matcher do
   [:global, :local] |> Enum.each(fn (flag) ->
     defmacro unquote(flag)([do: clauses]) do
       outer_vars = __CALLER__.vars
-      match_desc = "#{unquote(flag)} do " <>
-        String.slice(Macro.to_string(clauses), 1..-2) <> " end"
+      match_desc = clauses
+      |> Macro.to_string()
+      |> case do
+        "(" <> desc -> "#{unquote(flag)} do #{String.slice(desc, 0..-2)} end"
+        desc -> "#{unquote(flag)} do #{desc} end"
+      end
       clauses
+      |> case do
+        clauses when is_list(clauses) -> clauses
+        {:__block__, _, clauses} -> clauses
+        clause -> [clause]
+      end
+      |> base_match(outer_vars)
+      |> case do
+        %{mfa: nil} = bm -> Map.put(bm, :mfa, {:_, :_, :_})
+        bm -> bm
+      end
+      |> Map.put(:flags, [unquote(flag)])
+      |> Map.put(:desc, match_desc)
+      |> Macro.escape(unquote: true)
+    end
+    defmacro unquote(flag)(clause) do
+      outer_vars = __CALLER__.vars
+      match_desc = "#{unquote(flag)} " <> Macro.to_string(clause)
+      [clause]
       |> base_match(outer_vars)
       |> case do
         %{mfa: nil} = bm -> Map.put(bm, :mfa, {:_, :_, :_})

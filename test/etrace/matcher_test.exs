@@ -158,4 +158,65 @@ defmodule ETrace.Matcher.Test do
                     }
   end
 
+  test "local without single clause" do
+    res = local Map.get(a, b)
+    assert res == %Matcher{flags: [:local],
+                    mfa: {Map, :get, 2},
+                    ms: [{[:"$1", :"$2"], [],
+                      [message: [[:a, :"$1"], [:b, :"$2"]]]}],
+                    desc: "local Map.get(a, b)"
+                    }
+  end
+
+  test "local without single clause no params" do
+    res = local Map.get(_, _)
+    assert res == %Matcher{flags: [:local],
+                    mfa: {Map, :get, 2},
+                    ms: [{[:_, :_], [],
+                      [message: []]}],
+                    desc: "local Map.get(_, _)"
+                    }
+  end
+
+  test "local without single clause no params no fun" do
+    res = local Map._
+    assert res == %Matcher{flags: [:local],
+                    mfa: {Map, :_, :_},
+                    ms: [{:_, [],
+                      [message: []]}],
+                    desc: "local Map._()"
+                    }
+  end
+
+  test "local without single clause match all" do
+    res = local _
+    assert res == %Matcher{flags: [:local],
+                    mfa: {:_, :_, :_},
+                    ms: [{:_, [],
+                      [message: []]}],
+                    desc: "local _"
+                    }
+  end
+
+  test "local without body with multiple clauses" do
+    res = local do Map.get(a, b); Map.get(d, e) end
+    assert res == %Matcher{flags: [:local],
+                    mfa: {Map, :get, 2},
+                    ms: [{[:"$1", :"$2"], [],
+                      [message: [[:a, :"$1"], [:b, :"$2"]]]},
+                         {[:"$1", :"$2"], [],
+                      [message: [[:d, :"$1"], [:e, :"$2"]]]}],
+                    desc: "local do \n  Map.get(a, b)\n  Map.get(d, e)\n end"
+                    }
+  end
+
+  test "local without body with one do clause" do
+    res = local do Map.get(a, b) end
+    assert res == %Matcher{flags: [:local],
+                    mfa: {Map, :get, 2},
+                    ms: [{[:"$1", :"$2"], [],
+                      [message: [[:a, :"$1"], [:b, :"$2"]]]}],
+                    desc: "local do Map.get(a, b) end"
+                    }
+  end
 end

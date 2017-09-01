@@ -3,16 +3,27 @@ defmodule ETrace.DisplayTool do
   Reports display type tracing
   """
   alias __MODULE__
+  alias ETrace.Probe
+  use ETrace.Tool
 
-  defstruct report_fun: nil
+  defstruct type: nil
 
   def init(opts) do
-    %DisplayTool{report_fun: Keyword.get(opts, :report_fun,
-                                                    &(IO.puts to_string(&1)))}
+    init_state = init_tool(%DisplayTool{}, opts)
+
+    case Keyword.get(opts, :match) do
+      nil -> init_state
+      matcher ->
+        type = Keyword.get(opts, :type, :call)
+        probe = Probe.new(type: type,
+                          process: get_process(init_state),
+                          match_by: matcher)
+        set_probes(init_state, [probe])
+    end
   end
 
   def handle_event(event, state) do
-    state.report_fun.(event)
+    report_event(state, event)
     state
   end
 

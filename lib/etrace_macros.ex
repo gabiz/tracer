@@ -28,4 +28,5 @@ defmodule ETrace.Macros do
     quote do: unquote(target) = unquote(res)
   end
 
+  # defmacro create_match_spec()
 end

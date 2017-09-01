@@ -18,6 +18,12 @@ defmodule ETrace.ToolServer do
 
     spawn_link(fn -> process_loop(initial_state) end)
   end
+  def start(%{"__tool__": _} = tool) do
+    initial_state = %ToolServer{tool_type: Map.get(tool, :__struct__)}
+    |> Map.put(:tool_state, tool)
+
+    spawn_link(fn -> process_loop(initial_state) end)
+  end
 
   def stop(nil), do: :ok
   def stop(pid) when is_pid(pid) do
@@ -67,19 +73,19 @@ defmodule ETrace.ToolServer do
   end
 
   defp tool_init(state, opts) do
-    tool = ToolRouter.router(state.tool_type)
+    tool = ToolRouter.route(state.tool_type)
     tool_state = tool.init(opts)
     Map.put(state, :tool_state, tool_state)
   end
 
   defp tool_handle_event(event, state) do
-    tool = ToolRouter.router(state.tool_type)
+    tool = ToolRouter.route(state.tool_type)
     tool_state = tool.handle_event(event, state.tool_state)
     Map.put(state, :tool_state, tool_state)
   end
 
   defp tool_handle_done(state) do
-    tool = ToolRouter.router(state.tool_type)
+    tool = ToolRouter.route(state.tool_type)
     tool_state = tool.handle_done(state.tool_state)
     Map.put(state, :tool_state, tool_state)
   end

@@ -6,10 +6,12 @@ defmodule ETrace.ToolRouter do
   alias ETrace.{CountTool, DurationTool,
                 DisplayTool, CallSeqTool}
 
-  def router(:count), do: CountTool
-  def router(:display), do: DisplayTool
-  def router(:duration), do: DurationTool
-  def router(:call_seq), do: CallSeqTool
-  def router(nil), do: DisplayTool
+  def route(:count), do: CountTool
+  def route(:display), do: DisplayTool
+  def route(:duration), do: DurationTool
+  def route(:call_seq), do: CallSeqTool
+  def route(nil), do: DisplayTool
+  def route(mod) when is_atom(mod), do: mod
+  def route(_), do: {:error, :unknown_tool}
 
 end

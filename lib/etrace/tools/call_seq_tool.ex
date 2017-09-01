@@ -3,7 +3,8 @@ defmodule ETrace.CallSeqTool do
   Reports duration type traces
   """
   alias __MODULE__
-  alias ETrace.{EventCall, EventReturnFrom}
+  alias ETrace.{EventCall, EventReturnFrom, Matcher, Probe}
+  use ETrace.Tool
 
   defmodule Event do
     @moduledoc """
@@ -44,15 +45,31 @@ defmodule ETrace.CallSeqTool do
   end
 
   defstruct ignore_recursion: nil,
-            stacks: %{},
-            report_fun: nil
+            stacks: %{}
 
   def init(opts) do
-    %CallSeqTool{ignore_recursion: Keyword.get(opts,
-                                                   :ignore_recursion, false),
-                     report_fun: Keyword.get(opts,
-                                             :report_fun,
-                                             &(IO.puts to_string(&1)))}
+    init_state = %CallSeqTool{}
+    |> init_tool(opts)
+    |> Map.put(:ignore_recursion,
+               Keyword.get(opts, :ignore_recursion, false))
+
+    if Keyword.keyword?(:match) do
+      raise ArgumentError, message: "must have something to match"
+    end
+
+    case Keyword.get(opts, :match) do
+      nil -> init_state
+      %Matcher{} = matcher ->
+        ms_with_return_trace = matcher.ms
+        |> Enum.map(fn {head, condit, body} ->
+          {head, condit, [{:return_trace} | body]}
+        end)
+        matcher = put_in(matcher.ms, ms_with_return_trace)
+        probe = Probe.new(type: :call,
+                          process: get_process(init_state),
+                          match_by: matcher)
+        set_probes(init_state, [probe])
+    end
   end
 
   def handle_event(event, state) do
@@ -121,7 +138,8 @@ defmodule ETrace.CallSeqTool do
       |> Enum.reverse()
       |> Enum.reduce(0, fn
         {:enter, {mod, fun, arity, m}, _enter_ts_ms}, depth ->
-          state.report_fun.(%Event{
+          # state.report_fun.(%Event{
+          report_event(state, %Event{
             type: :enter,
             depth: depth,
             pid: pid,
@@ -132,7 +150,8 @@ defmodule ETrace.CallSeqTool do
           })
           depth + 1
         {:exit, {mod, fun, arity, return_value}, _exit_ts_ms}, depth ->
-          state.report_fun.(%Event{
+          # state.report_fun.(%Event{
+          report_event(state, %Event{
             type: :exit,
             depth: depth - 1,
             pid: pid,

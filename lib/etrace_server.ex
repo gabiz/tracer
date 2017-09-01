@@ -5,7 +5,7 @@ defmodule ETrace.Server do
 
   use GenServer
   alias __MODULE__
-  alias ETrace.{AgentCmds, ToolServer, Probe, ProbeList}
+  alias ETrace.{AgentCmds, ToolServer, Probe, ProbeList, Tool}
 
   @server_name __MODULE__
   defstruct tool_server_pid: nil,
@@ -13,7 +13,8 @@ defmodule ETrace.Server do
             forward_pid: nil,
             probes: [],
             nodes: nil,
-            agent_pids: []
+            agent_pids: [],
+            tool: nil
 
   defmacro ensure_server_up(do: clauses) do
     quote do
@@ -50,7 +51,7 @@ defmodule ETrace.Server do
     end
   end
 
-  [:stop_trace, :clear_probes, :get_probes]
+  [:stop_tool, :stop_trace, :clear_probes, :get_probes]
   |> Enum.each(fn cmd ->
     def unquote(cmd)() do
       ensure_server_up do
@@ -99,6 +100,19 @@ defmodule ETrace.Server do
   end
   def set_nodes(node), do: set_nodes([node])
 
+  def set_tool(%{"__tool__": _} = tool) do
+    ensure_server_up do
+      GenServer.call(@server_name, {:set_tool, tool})
+    end
+  end
+  def set_tool(_), do: {:error, :not_a_tool}
+
+  def start_tool(%{"__tool__": _} = tool) do
+    ensure_server_up do
+      GenServer.call(@server_name, {:start_tool, tool})
+    end
+  end
+
   def init(_params) do
     Process.flag(:trap_exit, true)
     {:ok, %Server{}}
@@ -136,6 +150,10 @@ defmodule ETrace.Server do
 
   def handle_call({:set_probe, nodes}, _from, %Server{} = state) do
     {:reply, :ok, put_in(state.probes, nodes)}
+  end
+
+  def handle_call({:set_tool, tool}, _from, %Server{} = state) do
+    {:reply, :ok, put_in(state.tool, tool)}
   end
 
   def handle_call({:set_nodes, nodes}, _from, %Server{} = state) do
@@ -179,7 +197,48 @@ defmodule ETrace.Server do
     end
   end
 
+  def handle_call({:start_tool, tool}, _from, %Server{} = state) do
+    with  %Server{} = state <- stop_if_tracing(state),
+          %Server{} = state <- get_running_config(state, tool),
+          :ok <- ProbeList.valid?(state.probes),
+          ret when is_pid(ret) <- ToolServer.start(tool) do
+      state = state
+      |> Map.put(:tool_server_pid, ret)
+
+      agent_opts = Tool.get_agent_opts(tool)
+      nodes = Keyword.get(agent_opts, :nodes, state.nodes)
+      {ret, new_state} = case AgentCmds.start(nodes,
+                                           state.probes,
+                                           [forward_pid: state.tool_server_pid]
+                                              ++ agent_opts) do
+        {:error, error} ->
+          {{:error, error}, state}
+        agent_pids ->
+          new_state = state
+          |> Map.put(:agent_pids, agent_pids)
+          |> Map.put(:nodes, nodes)
+          |> Map.put(:tracing, true)
+          # TODO get a notification from agents
+          :timer.sleep(5)
+          report_message(state,
+                         :started_tracing,
+                         "started tracing")
+          {:ok, new_state}
+      end
+
+      {:reply, ret, new_state}
+    else
+      error ->
+        {:reply, error, state}
+    end
+  end
+
   def handle_call(:stop_trace, _from, %Server{} = state) do
+    {ret, state} = handle_stop_trace(state)
+    {:reply, ret, state}
+  end
+
+  def handle_call(:stop_tool, _from, %Server{} = state) do
     {ret, state} = handle_stop_trace(state)
     {:reply, ret, state}
   end
@@ -241,6 +300,19 @@ defmodule ETrace.Server do
     end
   end
 
+  defp get_running_config(state, tool) do
+    tool
+    |> Tool.get_probes()
+    |> case do
+      nil -> state
+      probes when is_list(probes) ->
+        put_in(state.probes, probes)
+      probe ->
+        put_in(state.probes, [probe])
+    end
+    |> Map.put(:forward_pid, Tool.get_forward_to(tool))
+  end
+
   defp report_message(state, event, message) do
     if is_pid(state.forward_pid) do
       send state.forward_pid, event
@@ -256,7 +328,7 @@ defmodule ETrace.Server do
       _ ->
         new_state = state
         |> Map.put(:agent_pids, [])
-        |> Map.put(:nodes, [])
+        |> Map.put(:nodes, nil)
         |> Map.put(:tracing, false)
         {:ok, new_state}
     end

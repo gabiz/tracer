@@ -2,7 +2,7 @@ defmodule ETrace do
   @moduledoc """
   ETrace API
   """
-  alias ETrace.{Server, Probe, Matcher}
+  alias ETrace.{Server, Probe, ToolRouter}
   import ETrace.Macros
   defmacro __using__(_opts) do
     quote do
@@ -17,14 +17,32 @@ defmodule ETrace do
   delegate :clear_probes, to: Server
   delegate :get_probes, to: Server
   delegate :stop_trace, to: Server
+  delegate :stop_tool, to: Server
 
   delegate_1 :add_probe, to: Server
   delegate_1 :remove_probe, to: Server
   delegate_1 :set_probe, to: Server
-  delegate_1 :set_node, to: Server
+  delegate_1 :set_nodes, to: Server
+  delegate_1 :set_tool, to: Server
 
   def probe(params) do
     Probe.new(params)
+  end
+
+  def probe(type, params) do
+    Probe.new([type: type] ++ params)
+  end
+
+  def tool(type, params) do
+    tool_module = ToolRouter.route(type)
+    tool_module.init(params)
+  end
+
+  def start_tool(%{"__tool__": _} = tool) do
+    Server.start_tool(tool)
+  end
+  def start_tool(type, params) do
+    Server.start_tool(tool(type, params))
   end
 
   def start_trace(opts \\ [display: []]) do
@@ -47,25 +65,5 @@ defmodule ETrace do
       Server.start_trace(opts)
     end
   end
-
-  # [:global, :local] |> Enum.each(fn (flag) ->
-  #   defmacro unquote(flag)([do: clauses]) do
-  #     outer_vars = __CALLER__.vars
-  #     match_desc = "#{unquote(flag)} do " <>
-  #       String.slice(Macro.to_string(clauses), 1..-2) <> " end"
-  #     clauses
-  #     |> Matcher.base_match(outer_vars)
-  #     |> case do
-  #       %{mfa: nil} = bm -> Map.put(bm, :mfa, {:_, :_, :_})
-  #       bm -> bm
-  #     end
-  #     |> Map.put(:flags, [unquote(flag)])
-  #     |> Map.put(:desc, match_desc)
-  #     |> Macro.escape(unquote: true)
-  #   end
-  #   defmacro unquote(flag)(_) do
-  #     raise ArgumentError, message: "invalid args to matchspec"
-  #   end
-  # end)
 
 end

@@ -1,6 +1,6 @@
 defmodule ETrace.Server.Test do
   use ExUnit.Case
-  alias ETrace.{Server, Probe}
+  alias ETrace.{Server, Probe, Tool}
   import ETrace.Matcher
 
   setup do
@@ -156,7 +156,7 @@ defmodule ETrace.Server.Test do
     assert probes == []
   end
 
-  test "start_trace() starts a trace" do
+  test "start_tool() starts a trace" do
     test_pid = self()
     {:ok, _} = Server.start()
     probe = Probe.new(type: :call,
@@ -164,8 +164,8 @@ defmodule ETrace.Server.Test do
                       match_by: local do Map.new(a) -> message(a) end)
     :ok = Server.add_probe(probe)
 
-    res = Server.start_trace(display: [], forward_to: test_pid)
-    assert res == :ok
+    tool = Tool.new(:display, forward_to: test_pid, probe: probe)
+    :ok = Server.start_tool(tool)
 
     state = :sys.get_state(ETrace.Server, 100)
     %{tracing: tracing,
@@ -196,15 +196,15 @@ defmodule ETrace.Server.Test do
           message: [[:a, %{}]], pid: ^test_pid, ts: _}
   end
 
-  test "stop_trace() stops tracing" do
+  test "stop_tool() stops tracing" do
     test_pid = self()
     {:ok, _} = Server.start()
     probe = Probe.new(type: :call,
                       process: self(),
                       match_by: local do Map.new(a) -> message(a) end)
     :ok = Server.add_probe(probe)
-    # :ok = Server.start_trace(display: [], forward_to: test_pid)
-    :ok = Server.start_trace(display: [], forward_to: test_pid)
+    tool = Tool.new(:display, forward_to: test_pid, probe: probe)
+    :ok = Server.start_tool(tool)
 
     # check tracing is enabled
     :timer.sleep(50) # avoid the test from bailing too quickly
@@ -220,7 +220,7 @@ defmodule ETrace.Server.Test do
                   call_count: false]}
 
     assert_receive :started_tracing
-    res = Server.stop_trace()
+    res = Server.stop_tool()
     assert res == :ok
 
     :timer.sleep(50) # avoid the test from bailing too quickly
@@ -235,16 +235,20 @@ defmodule ETrace.Server.Test do
     refute_receive(_)
   end
 
-  test "start_trace() allows to override tracing limits" do
+  test "start_tool() allows to override tracing limits" do
     test_pid = self()
     {:ok, _} = Server.start()
     probe = Probe.new(type: :call,
                       process: self(),
                       match_by: local do Map.new(a) -> message(a) end)
-    :ok = Server.add_probe(probe)
 
-    :ok = Server.start_trace(max_message_count: 1,
-                             display: [], forward_to: test_pid)
+    tool = Tool.new(:display, forward_to: test_pid, probe: probe,
+                    max_message_count: 1)
+    :ok = Server.start_tool(tool)
+
+    # :ok = Server.add_probe(probe)
+    # :ok = Server.start_trace(max_message_count: 1,
+    #                          display: [], forward_to: test_pid)
 
     :timer.sleep(50)
      Map.new(%{})
@@ -273,24 +277,26 @@ defmodule ETrace.Server.Test do
       :pong -> :ok
     end
 
-    # Process.flag(:trap_exit, true)
     test_pid = self()
     {:ok, _} = Server.start()
     probe = Probe.new(type: :call,
                       process: :all,
                       match_by: local do Map.new(a) -> message(a) end)
-    :ok = Server.add_probe(probe)
 
-    :ok = Server.start_trace(nodes: remote_node_a,
-                             max_message_count: 1,
-                             display: [], forward_to: test_pid)
+    tool = Tool.new(:display, nodes: [remote_node_a], forward_to: test_pid, probe: probe)
+    :ok = Server.start_tool(tool)
+
+    # :ok = Server.add_probe(probe)
+    #
+    # :ok = Server.start_trace(nodes: remote_node_a,
+    #                          max_message_count: 1,
+    #                          display: [], forward_to: test_pid)
 
     :timer.sleep(500)
-    #  Map.new(%{})
      assert_receive %ETrace.EventCall{mod: Map, fun: :new, arity: 1,
            message: [[:a, %{}]], pid: _, ts: _}
 
-     assert_receive {:done_tracing, :max_message_count, 1}
+    #  assert_receive {:done_tracing, :max_message_count, 1}
   end
 
   test "trace with a count tool" do
@@ -301,8 +307,9 @@ defmodule ETrace.Server.Test do
                 type: :call,
                 process: test_pid,
                 match_by: local do String.split(a, b) -> message(a, b) end)
-    :ok = Server.add_probe(probe)
-    :ok = Server.start_trace(count: [], forward_to: test_pid)
+
+    tool = Tool.new(:count, forward_to: test_pid, probe: probe)
+    :ok = Server.start_tool(tool)
 
     :timer.sleep(50)
 
@@ -318,9 +325,9 @@ defmodule ETrace.Server.Test do
     assert res == :ok
 
     assert_receive %ETrace.CountTool.Event{counts:
-      [{[a: "\"hello world\"", b: "\",\""], 1},
-       {[a: "\"z,y\"", b: "\",\""], 2},
-       {[a: "\"x,y\"", b: "\",\""], 3}]}
+      [{[a: "hello world", b: ","], 1},
+       {[a: "z,y", b: ","], 2},
+       {[a: "x,y", b: ","], 3}]}
 
 
     assert_receive {:done_tracing, :stop_command}
@@ -340,8 +347,8 @@ defmodule ETrace.Server.Test do
                 process: test_pid,
                 match_by: local do ETrace.Server.Test.recur_len(list, val) -> return_trace(); message(list, val) end)
 
-    :ok = Server.add_probe(probe)
-    :ok = Server.start_trace(duration: [], forward_to: test_pid)
+    tool = Tool.new(:duration, forward_to: test_pid, probe: probe)
+    :ok = Server.start_tool(tool)
 
     assert_receive :started_tracing
 
@@ -370,8 +377,8 @@ defmodule ETrace.Server.Test do
                 process: test_pid,
                 match_by: local do String.split(string, pattern) -> return_trace(); message(string, pattern) end)
 
-    :ok = Server.add_probe(probe)
-    :ok = Server.start_trace(display: [], forward_to: test_pid)
+    tool = Tool.new(:display, forward_to: test_pid, probe: probe)
+    :ok = Server.start_tool(tool)
 
     assert_receive :started_tracing
 
@@ -425,8 +432,8 @@ defmodule ETrace.Server.Test do
                 process: test_pid,
                 match_by: local do ETrace.Server.Test.recur_len(list, val) -> return_trace(); message(list, val) end)
 
-    :ok = Server.add_probe(probe)
-    :ok = Server.start_trace(call_seq: [], forward_to: test_pid)
+    tool = Tool.new(:call_seq, forward_to: test_pid, probe: probe)
+    :ok = Server.start_tool(tool)
 
     assert_receive :started_tracing
 

@@ -3,7 +3,8 @@ defmodule ETrace.CountTool do
   Reports count type traces
   """
   alias __MODULE__
-  alias ETrace.EventCall
+  alias ETrace.{EventCall, Probe}
+  use ETrace.Tool
 
   defmodule Event do
     @moduledoc """
@@ -17,7 +18,6 @@ defmodule ETrace.CountTool do
         |> find_max_lengths()
         |> format_count_entries()
         |> Enum.map(fn {e, count} ->
-          # "\t[#{e}]\t= #{count}"
           "\t#{String.pad_trailing(Integer.to_string(count), 15)}[#{e}]"
         end)
         |> Enum.join("\n")
@@ -33,7 +33,7 @@ defmodule ETrace.CountTool do
             {{:_unknown, other}, m} ->
               max(m, String.length(other))
             {{key, val}, m} ->
-              max(m, String.length("#{Atom.to_string(key)}:#{val}"))
+              max(m, String.length("#{Atom.to_string(key)}:#{inspect val}"))
          end)
           {max, acc ++ [{e, c}]}
         end)
@@ -47,7 +47,7 @@ defmodule ETrace.CountTool do
             {m, {:_unknown, other}} ->
               String.pad_trailing(other, m)
             {m, {key, val}} ->
-              String.pad_trailing("#{Atom.to_string(key)}:#{val}", m)
+              String.pad_trailing("#{Atom.to_string(key)}:#{inspect val}", m)
           end)
           |> Enum.join(", ")
           {e_as_string, c}
@@ -56,13 +56,23 @@ defmodule ETrace.CountTool do
     end
   end
 
-  defstruct counts: %{},
-            report_fun: nil
+  defstruct counts: %{}
 
   def init(opts) when is_list(opts) do
-    %CountTool{report_fun: Keyword.get(opts,
-                                           :report_fun,
-                                           &(IO.puts to_string(&1)))}
+    init_state = init_tool(%CountTool{}, opts)
+
+    # if Keyword.keyword?(:match) do
+    #   raise ArgumentError, message: "must have something to match"
+    # end
+
+    case Keyword.get(opts, :match) do
+      nil -> init_state
+      matcher ->
+        probe = Probe.new(type: :call,
+                          process: get_process(init_state),
+                          match_by: matcher)
+        set_probes(init_state, [probe])
+    end
   end
 
   def handle_event(event, state) do
@@ -76,12 +86,11 @@ defmodule ETrace.CountTool do
   end
 
   def handle_done(state) do
-    # state.report_fun.("count:")
     counts = state.counts
     |> Map.to_list()
     |> Enum.sort(&(elem(&1, 1) < elem(&2, 1)))
 
-    state.report_fun.(%Event{
+    report_event(state, %Event{
         counts: counts
     })
 
@@ -91,7 +100,8 @@ defmodule ETrace.CountTool do
   defp message_to_tuple_list(term) when is_list(term) do
     term
     |> Enum.map(fn
-      [key, val] -> {key, inspect(val)}
+      [key, val] -> {key, val}
+      # [key, val] -> {key, inspect(val)}
       other -> {:_unknown, inspect(other)}
      end)
   end
