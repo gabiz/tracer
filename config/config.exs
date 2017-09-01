@@ -10,11 +10,11 @@ use Mix.Config
 
 # You can configure for your application as:
 #
-#     config :etrace, key: :value
+#     config :tracer, key: :value
 #
 # And access this configuration in your application as:
 #
-#     Application.get_env(:etrace, :key)
+#     Application.get_env(:tracer, :key)
 #
 # Or configure a 3rd-party app:
 #

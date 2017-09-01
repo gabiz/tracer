@@ -1,8 +1,8 @@
-defmodule Etrace.Mixfile do
+defmodule Tracer.Mixfile do
   use Mix.Project
 
   def project do
-    [app: :etrace,
+    [app: :tracer,
      version: "0.1.0",
      elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
@@ -17,7 +17,7 @@ defmodule Etrace.Mixfile do
   #
   # Type "mix help compile.app" for more information
   def application do
-    [mod: {ETrace.App, []},
+    [mod: {Tracer.App, []},
      extra_applications: [:logger]]
   end
 
