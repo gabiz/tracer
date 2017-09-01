@@ -1,4 +1,4 @@
-defmodule Tracer.DisplayTool do
+defmodule Tracer.Tool.Display do
   @moduledoc """
   Reports display type tracing
   """
@@ -6,10 +6,10 @@ defmodule Tracer.DisplayTool do
   alias Tracer.Probe
   use Tracer.Tool
 
-  defstruct type: nil
+  defstruct []
 
   def init(opts) do
-    init_state = init_tool(%DisplayTool{}, opts)
+    init_state = init_tool(%Display{}, opts)
 
     case Keyword.get(opts, :match) do
       nil -> init_state

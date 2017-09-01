@@ -4,6 +4,7 @@ defmodule Tracer.Test do
 
   import Tracer
   import Tracer.Matcher
+  alias Tracer.{Tool.Count, Tool.Duration, Tool.CallSeq, Tool.Display}
 
   setup do
     # kill server if alive? for a fresh test
@@ -21,7 +22,7 @@ defmodule Tracer.Test do
     assert Process.alive?(pid)
     test_pid = self()
 
-    tool = Tracer.tool(:display, forward_to: test_pid)
+    tool = Tracer.tool(Display, forward_to: test_pid)
     |> Tracer.Tool.add_probe(Tracer.probe(type: :call, process: :all,
                                   match_by: local do Map.new() -> :ok end))
     |> Tracer.Tool.add_probe(Tracer.probe(type: :gc, process: self()))
@@ -85,7 +86,7 @@ defmodule Tracer.Test do
   test "display tool" do
     test_pid = self()
 
-    res = start_tool(:display,
+    res = start_tool(Display,
                      forward_to: test_pid,
                      process: test_pid,
                      match: local do Map.new() -> :ok end)
@@ -111,7 +112,7 @@ defmodule Tracer.Test do
   test "count tool" do
     test_pid = self()
 
-    res = start_tool(:count,
+    res = start_tool(Count,
                      process: test_pid,
                      forward_to: test_pid,
                      match: global do Map.new(%{a: a}); Map.new(%{b: b}) end)
@@ -138,7 +139,7 @@ defmodule Tracer.Test do
     res = stop_tool()
     assert res == :ok
 
-    assert_receive %Tracer.CountTool.Event{counts:
+    assert_receive %Count.Event{counts:
       [{[a: :foo], 2},
        {[b: :bar], 6}]}
 
@@ -153,7 +154,7 @@ defmodule Tracer.Test do
   test "duration tool" do
     test_pid = self()
 
-    res = start_tool(:duration,
+    res = start_tool(Duration,
                      process: test_pid,
                      forward_to: test_pid,
                      match: local Tracer.Test.recur_len(list, val))
@@ -183,7 +184,7 @@ defmodule Tracer.Test do
   test "call_seq tool" do
     test_pid = self()
 
-    res = start_tool(:call_seq,
+    res = start_tool(CallSeq,
                      process: test_pid,
                      forward_to: test_pid,
                      match: local Tracer.Test.recur_len(list, val))
@@ -199,18 +200,18 @@ defmodule Tracer.Test do
     res = stop_tool()
     assert res == :ok
 
-    assert_receive %Tracer.CallSeqTool.Event{arity: 2, depth: 0, fun: :recur_len, message: [[:list, [1, 2, 3, 4, 5]], [:val, 0]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %Tracer.CallSeqTool.Event{arity: 2, depth: 1, fun: :recur_len, message: [[:list, [2, 3, 4, 5]], [:val, 1]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %Tracer.CallSeqTool.Event{arity: 2, depth: 2, fun: :recur_len, message: [[:list, [3, 4, 5]], [:val, 2]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %Tracer.CallSeqTool.Event{arity: 2, depth: 3, fun: :recur_len, message: [[:list, [4, 5]], [:val, 3]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %Tracer.CallSeqTool.Event{arity: 2, depth: 4, fun: :recur_len, message: [[:list, [5]], [:val, 4]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %Tracer.CallSeqTool.Event{arity: 2, depth: 5, fun: :recur_len, message: [[:list, []], [:val, 5]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %Tracer.CallSeqTool.Event{arity: 2, depth: 5, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %Tracer.CallSeqTool.Event{arity: 2, depth: 4, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %Tracer.CallSeqTool.Event{arity: 2, depth: 3, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %Tracer.CallSeqTool.Event{arity: 2, depth: 2, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %Tracer.CallSeqTool.Event{arity: 2, depth: 1, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %Tracer.CallSeqTool.Event{arity: 2, depth: 0, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
+    assert_receive %CallSeq.Event{arity: 2, depth: 0, fun: :recur_len, message: [[:list, [1, 2, 3, 4, 5]], [:val, 0]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %CallSeq.Event{arity: 2, depth: 1, fun: :recur_len, message: [[:list, [2, 3, 4, 5]], [:val, 1]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %CallSeq.Event{arity: 2, depth: 2, fun: :recur_len, message: [[:list, [3, 4, 5]], [:val, 2]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %CallSeq.Event{arity: 2, depth: 3, fun: :recur_len, message: [[:list, [4, 5]], [:val, 3]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %CallSeq.Event{arity: 2, depth: 4, fun: :recur_len, message: [[:list, [5]], [:val, 4]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %CallSeq.Event{arity: 2, depth: 5, fun: :recur_len, message: [[:list, []], [:val, 5]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %CallSeq.Event{arity: 2, depth: 5, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
+    assert_receive %CallSeq.Event{arity: 2, depth: 4, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
+    assert_receive %CallSeq.Event{arity: 2, depth: 3, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
+    assert_receive %CallSeq.Event{arity: 2, depth: 2, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
+    assert_receive %CallSeq.Event{arity: 2, depth: 1, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
+    assert_receive %CallSeq.Event{arity: 2, depth: 0, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
 
     assert_receive {:done_tracing, :stop_command}
     # not expeting more events

@@ -2,7 +2,7 @@ defmodule Tracer.Tool do
   @moduledoc """
   Module that is used by all Tool implementations
   """
-  alias Tracer.{Probe, ProbeList, ToolRouter}
+  alias Tracer.{Probe, ProbeList}
 
   @callback init([any]) :: any
 
@@ -83,8 +83,7 @@ defmodule Tracer.Tool do
             process: nil,
             agent_opts: []
 
-  def new(type, params) do
-    tool_module = ToolRouter.route(type)
+  def new(tool_module, params) do
     tool_module.init(params)
   end
 

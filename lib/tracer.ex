@@ -8,6 +8,7 @@ defmodule Tracer do
     quote do
       import Tracer
       import Tracer.Matcher
+      alias Tracer.{Tool.Display, Tool.Count, Tool.CallSeq, Tool.Duration}
       :ok
     end
   end

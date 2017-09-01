@@ -5,7 +5,7 @@ defmodule Tracer.Server do
 
   use GenServer
   alias __MODULE__
-  alias Tracer.{AgentCmds, ToolServer, Probe, ProbeList, Tool}
+  alias Tracer.{AgentCmds, ToolServer, ProbeList, Tool}
 
   @server_name __MODULE__
   defstruct tool_server_pid: nil,
