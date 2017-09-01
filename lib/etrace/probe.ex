@@ -50,6 +50,14 @@ defmodule ETrace.Probe do
     end
   end
 
+  def new(type, opts \\ []) when is_list(opts) do
+    if Enum.member?(@valid_types, type) do
+      new([type: type] ++ opts)
+    else
+      {:error, :invalid_probe_type}
+    end
+  end
+
   defp default_flags(opts) do
     if Keyword.get(opts, :type) == :call do
       [:arity, :timestamp]

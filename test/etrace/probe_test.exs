@@ -12,6 +12,17 @@ defmodule ETrace.Probe.Test do
     assert Probe.new(type: :foo) == {:error, :invalid_type}
   end
 
+  test "new supports explicit type parameter" do
+    %Probe{} = probe = Probe.new(:call)
+    assert probe.type == :call
+    assert probe.process_list == []
+  end
+
+  test "new complains if invalid probe type is passed" do
+    res = Probe.new(:foo)
+    assert res == {:error, :invalid_probe_type}
+  end
+
   test "new returns a new probe with the correct type" do
     %Probe{} = probe = Probe.new(type: :call)
     assert probe.type == :call
