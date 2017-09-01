@@ -11,11 +11,10 @@ defmodule ETrace.Tool do
       alias ETrace.Tool
       @behaviour Tool
 
-      def init_tool(state, opts) do
+      def init_tool(%{} = state, opts) when is_list(opts) do
         tool_state = %Tool{
           forward_to: Keyword.get(opts, :forward_to),
           process: Keyword.get(opts, :process, self()),
-          nodes: Keyword.get(opts, :nodes, nil),
           agent_opts: extract_agent_opts(opts)
         }
 
@@ -28,6 +27,10 @@ defmodule ETrace.Tool do
             Tool.add_probe(state, probe)
           _, state -> state
         end)
+      end
+      def init_tool(_, _) do
+        raise ArgumentError,
+              message: "arguments needs to be a map and a keyword list"
       end
 
       defp extract_agent_opts(opts) do
@@ -46,7 +49,7 @@ defmodule ETrace.Tool do
         Map.put(state, :"__tool__", tool_state)
       end
 
-      def get_process(state) do
+      defp get_process(state) do
         Tool.get_tool_field(state, :process)
       end
 
@@ -78,7 +81,6 @@ defmodule ETrace.Tool do
   defstruct probes: [],
             forward_to: nil,
             process: nil,
-            nodes: nil,
             agent_opts: []
 
   def new(type, params) do
@@ -104,7 +106,8 @@ defmodule ETrace.Tool do
   end
 
   def get_nodes(state) do
-    get_tool_field(state, :nodes)
+    agent_opts = get_tool_field(state, :agent_opts)
+    Keyword.get(agent_opts, :nodes, nil)
   end
 
   def get_probes(state) do
