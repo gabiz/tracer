@@ -53,10 +53,6 @@ defmodule ETrace.CallSeqTool do
     |> Map.put(:ignore_recursion,
                Keyword.get(opts, :ignore_recursion, false))
 
-    if Keyword.keyword?(:match) do
-      raise ArgumentError, message: "must have something to match"
-    end
-
     case Keyword.get(opts, :match) do
       nil -> init_state
       %Matcher{} = matcher ->
@@ -130,7 +126,7 @@ defmodule ETrace.CallSeqTool do
     put_in(state.stacks, Map.put(state.stacks, key, new_stack))
   end
 
-  def handle_done(state) do
+  def handle_stop(state) do
     # get stack for each process
     state.stacks |> Enum.each(fn {pid, stack} ->
       # state.report_fun.("pid = #{pid}")

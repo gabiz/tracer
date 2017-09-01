@@ -27,8 +27,4 @@ defmodule ETrace.DisplayTool do
     state
   end
 
-  def handle_done(state) do
-    state
-  end
-
 end

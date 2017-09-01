@@ -61,10 +61,6 @@ defmodule ETrace.CountTool do
   def init(opts) when is_list(opts) do
     init_state = init_tool(%CountTool{}, opts)
 
-    # if Keyword.keyword?(:match) do
-    #   raise ArgumentError, message: "must have something to match"
-    # end
-
     case Keyword.get(opts, :match) do
       nil -> init_state
       matcher ->
@@ -85,7 +81,7 @@ defmodule ETrace.CountTool do
     end
   end
 
-  def handle_done(state) do
+  def handle_stop(state) do
     counts = state.counts
     |> Map.to_list()
     |> Enum.sort(&(elem(&1, 1) < elem(&2, 1)))

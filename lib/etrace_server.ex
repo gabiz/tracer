@@ -101,11 +101,19 @@ defmodule ETrace.Server do
   def set_nodes(node), do: set_nodes([node])
 
   def set_tool(%{"__tool__": _} = tool) do
-    ensure_server_up do
-      GenServer.call(@server_name, {:set_tool, tool})
+    with :ok <- Tool.valid?(tool) do
+      ensure_server_up do
+        GenServer.call(@server_name, {:set_tool, tool})
+      end
+    else
+      error ->
+        raise RuntimeError,
+              message: "Invalid tool configuration: #{inspect error}"
     end
   end
-  def set_tool(_), do: {:error, :not_a_tool}
+  def set_tool(_) do
+    raise ArgumentError, message: "Argument is not a tool"
+  end
 
   def start_tool(%{"__tool__": _} = tool) do
     ensure_server_up do

@@ -4,9 +4,12 @@ defmodule ETrace.Tool do
   """
   alias ETrace.{Probe, ProbeList, ToolRouter}
 
+  @callback init([any]) :: any
+
   defmacro __using__(_opts) do
     quote do
       alias ETrace.Tool
+      @behaviour Tool
 
       def init_tool(state, opts) do
         tool_state = %Tool{
@@ -16,9 +19,10 @@ defmodule ETrace.Tool do
           agent_opts: extract_agent_opts(opts)
         }
 
-        state = Map.put(state, :"__tool__", tool_state)
+        state = state
+        |> Map.put(:"__tool__", tool_state)
+        |> set_probes(Keyword.get(opts, :probes, []))
 
-        # all all probe in opts
         Enum.reduce(opts, state, fn
           {:probe, probe}, state ->
             Tool.add_probe(state, probe)
@@ -55,13 +59,25 @@ defmodule ETrace.Tool do
         end
       end
 
+      def handle_start(state), do: state
+      def handle_event(event, state), do: state
+      def handle_flush(state), do: state
+      def handle_stop(state), do: state
+      def handle_valid?(state), do: :ok
+
+      defoverridable [handle_start: 1,
+                      handle_event: 2,
+                      handle_flush: 1,
+                      handle_stop: 1,
+                      handle_valid?: 1]
+
       :ok
     end
   end
 
   defstruct probes: [],
             forward_to: nil,
-            process: [],
+            process: nil,
             nodes: nil,
             agent_opts: []
 
@@ -74,6 +90,13 @@ defmodule ETrace.Tool do
     state
     |> Map.get(:"__tool__")
     |> Map.get(field)
+  end
+
+  def set_tool_field(state, field, value) do
+    tool_state = state
+    |> Map.get(:"__tool__")
+    |> Map.put(field, value)
+    Map.put(state, :"__tool__", tool_state)
   end
 
   def get_agent_opts(state) do
@@ -99,15 +122,50 @@ defmodule ETrace.Tool do
         {:error, error} ->
           {{:error, error}, state}
         probe_list when is_list(probe_list) ->
-          tool_state = state
-          |> Map.get(:"__tool__")
-          |> Map.put(:probes, probe_list)
-          Map.put(state, :"__tool__", tool_state)
+          set_tool_field(state, :probes, probe_list)
       end
     end
   end
   def add_probe(_, _) do
     {:error, :not_a_probe}
+  end
+
+  def remove_probe(state, %ETrace.Probe{} = probe) do
+    probes = get_probes(state)
+    case ProbeList.remove_probe(probes, probe) do
+      {:error, error} ->
+        {{:error, error}, state}
+      probe_list when is_list(probe_list) ->
+        set_tool_field(state, :probes, probe_list)
+    end
+  end
+
+  def valid?(state) do
+    with :ok <- ProbeList.valid?(get_probes(state)) do
+      handle_valid?(state)
+    end
+  end
+
+  # Routing Helpers
+
+  def handle_start(%{"__struct__": mod} = state) do
+    mod.handle_start(state)
+  end
+
+  def handle_event(event, %{"__struct__": mod} = state) do
+    mod.handle_event(event, state)
+  end
+
+  def handle_flush(%{"__struct__": mod} = state) do
+    mod.handle_flush(state)
+  end
+
+  def handle_stop(%{"__struct__": mod} = state) do
+    mod.handle_stop(state)
+  end
+
+  def handle_valid?(%{"__struct__": mod} = state) do
+    mod.handle_valid?(state)
   end
 
 end

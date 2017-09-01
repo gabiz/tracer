@@ -60,7 +60,10 @@ defmodule ETrace.Test do
               process_list: [test_pid], type: :sched}
             ]
 
-      ETrace.start_trace(display: [], forward_to: self())
+      # ETrace.start_trace(display: [], forward_to: self())
+
+      ETrace.Tool.new(:display, forward_to: test_pid, probes: probes)
+      |> ETrace.start_tool()
 
       %{tracing: true} = :sys.get_state(ETrace.Server, 100)
 

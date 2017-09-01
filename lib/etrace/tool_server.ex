@@ -6,21 +6,14 @@ defmodule ETrace.ToolServer do
 
   alias __MODULE__
   alias ETrace.{Event, EventCall, EventReturnTo, EventReturnFrom,
-                ToolRouter}
+                Tool}
 
   defstruct tool_type: nil,
             tool_state: nil
 
-  def start([]), do: start(display: [])
-  def start([{tool_type, tool_options} | _]) do
-    initial_state = %ToolServer{tool_type: tool_type}
-    |> tool_init(tool_options)
-
-    spawn_link(fn -> process_loop(initial_state) end)
-  end
   def start(%{"__tool__": _} = tool) do
-    initial_state = %ToolServer{tool_type: Map.get(tool, :__struct__)}
-    |> Map.put(:tool_state, tool)
+    initial_state = %ToolServer{}
+    |> Map.put(:tool_state, Tool.handle_start(tool))
 
     spawn_link(fn -> process_loop(initial_state) end)
   end
@@ -30,12 +23,21 @@ defmodule ETrace.ToolServer do
       send pid, :stop
   end
 
+  def flush(nil), do: :ok
+  def flush(pid) when is_pid(pid) do
+      send pid, :flush
+  end
+
   defp process_loop(%ToolServer{} = state) do
     receive do
       :stop ->
         state
-        |> tool_handle_done()
+        |> Map.put(:tool_state, Tool.handle_stop(state.tool_state))
         exit(:done_reporting)
+      :flush ->
+        state
+        |> Map.put(:tool_state, Tool.handle_flush(state.tool_state))
+        |> process_loop()
       trace_event when is_tuple(trace_event) ->
         state
         |> handle_trace_event(trace_event)
@@ -45,8 +47,7 @@ defmodule ETrace.ToolServer do
   end
 
   defp handle_trace_event(state, trace_event) do
-    trace_event
-    |> case do
+    trace_event = case trace_event do
       {:trace_ts, pid, :call, {m, f, a}, message, ts} ->
         %EventCall{mod: m, fun: f, arity: a, pid: pid, message: message, ts: ts}
       {:trace_ts, pid, :call, {m, f, a}, ts} ->
@@ -69,25 +70,8 @@ defmodule ETrace.ToolServer do
       _other ->
         %Event{event: trace_event}
     end
-    |> tool_handle_event(state)
-  end
 
-  defp tool_init(state, opts) do
-    tool = ToolRouter.route(state.tool_type)
-    tool_state = tool.init(opts)
-    Map.put(state, :tool_state, tool_state)
-  end
-
-  defp tool_handle_event(event, state) do
-    tool = ToolRouter.route(state.tool_type)
-    tool_state = tool.handle_event(event, state.tool_state)
-    Map.put(state, :tool_state, tool_state)
-  end
-
-  defp tool_handle_done(state) do
-    tool = ToolRouter.route(state.tool_type)
-    tool_state = tool.handle_done(state.tool_state)
-    Map.put(state, :tool_state, tool_state)
+    put_in(state.tool_state, Tool.handle_event(trace_event, state.tool_state))
   end
 
   defp now do

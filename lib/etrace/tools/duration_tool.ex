@@ -45,10 +45,6 @@ defmodule ETrace.DurationTool do
   def init(opts) when is_list(opts) do
     init_state = init_tool(%DurationTool{}, opts)
 
-    # if Keyword.keyword?(:match) do
-    #   raise ArgumentError, message: "must have something to match"
-    # end
-
     case Keyword.get(opts, :match) do
       nil -> init_state
       %Matcher{} = matcher ->
@@ -107,10 +103,6 @@ defmodule ETrace.DurationTool do
         end
       _ -> state
     end
-  end
-
-  def handle_done(state) do
-    state
   end
 
   defp ts_to_ms({mega, seconds, us}) do
