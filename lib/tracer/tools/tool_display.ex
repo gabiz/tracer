@@ -9,7 +9,7 @@ defmodule Tracer.Tool.Display do
   defstruct []
 
   def init(opts) do
-    init_state = init_tool(%Display{}, opts)
+    init_state = init_tool(%Display{}, opts, [:match])
 
     case Keyword.get(opts, :match) do
       nil -> init_state

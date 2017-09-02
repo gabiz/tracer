@@ -10,7 +10,7 @@ defmodule Tracer.Tool.Duration do
             stacks: %{}
 
   def init(opts) when is_list(opts) do
-    init_state = init_tool(%Duration{}, opts)
+    init_state = init_tool(%Duration{}, opts, [:match])
 
     case Keyword.get(opts, :match) do
       nil -> init_state

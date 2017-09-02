@@ -11,7 +11,22 @@ defmodule Tracer.Tool do
       alias Tracer.Tool
       @behaviour Tool
 
-      def init_tool(%{} = state, opts) when is_list(opts) do
+      @__allowed_opts__ [:probe, :probes, :forward_to, :process,
+                        :max_tracing_time, :max_message_count,
+                        :max_message_queue_size, :nodes]
+
+      def init_tool(_, _, _allowed_opts \\ nil)
+      def init_tool(%{"__struct__": mod} = state, opts, allowed_opts)
+          when is_list(opts) do
+        if is_list(allowed_opts) do
+          invalid_opts = get_invalid_options(opts,
+                                             allowed_opts ++ @__allowed_opts__)
+          if not Enum.empty?(invalid_opts) do
+            raise ArgumentError, message:
+              "not supported options: #{Enum.join(invalid_opts, ", ")}"
+          end
+        end
+
         tool_state = %Tool{
           forward_to: Keyword.get(opts, :forward_to),
           process: Keyword.get(opts, :process, self()),
@@ -28,7 +43,7 @@ defmodule Tracer.Tool do
           _, state -> state
         end)
       end
-      def init_tool(_, _) do
+      def init_tool(_, _, _) do
         raise ArgumentError,
               message: "arguments needs to be a map and a keyword list"
       end
@@ -41,6 +56,13 @@ defmodule Tracer.Tool do
        Enum.filter(opts,
                    fn {key, _} -> Enum.member?(agents_keys, key) end)
        end
+
+      defp get_invalid_options(opts, allowed_opts) do
+        Enum.reduce(opts, [], fn {key, val}, acc ->
+          if Enum.member?(allowed_opts, key), do: acc,
+          else: acc ++ [Atom.to_string(key)]
+        end)
+      end
 
       defp set_probes(state, probes) do
         tool_state = state

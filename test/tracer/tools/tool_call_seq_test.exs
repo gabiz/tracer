@@ -15,6 +15,12 @@ defmodule Tracer.Tool.CallSeq.Test do
     :ok
   end
 
+  test "CallSeq fails when called with invalid option" do
+    assert_raise ArgumentError, "not supported options: foo, bar", fn ->
+      start_tool(CallSeq, foo: 4, bar: 5)
+    end
+  end
+
   def recur_len([], acc), do: acc
   def recur_len([_h | t], acc), do: recur_len(t, acc + 1)
 

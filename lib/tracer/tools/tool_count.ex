@@ -9,7 +9,7 @@ defmodule Tracer.Tool.Count do
   defstruct counts: %{}
 
   def init(opts) when is_list(opts) do
-    init_state = init_tool(%Count{}, opts)
+    init_state = init_tool(%Count{}, opts, [:match])
 
     case Keyword.get(opts, :match) do
       nil -> init_state

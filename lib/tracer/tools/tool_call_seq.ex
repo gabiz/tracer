@@ -18,9 +18,12 @@ defmodule Tracer.Tool.CallSeq do
             stacks: %{},
             depth: %{}
 
+  @allowed_opts [:ignore_recursion, :max_depth, :show_args,
+                 :show_return, :start_match]
+
   def init(opts) do
     init_state = %CallSeq{}
-    |> init_tool(opts)
+    |> init_tool(opts, @allowed_opts)
     |> Map.put(:ignore_recursion,
                Keyword.get(opts, :ignore_recursion, false))
     |> Map.put(:max_depth,
@@ -39,7 +42,7 @@ defmodule Tracer.Tool.CallSeq do
             Map.put(init_state, :start_mfa, mfa)
           _error ->
             raise ArgumentError,
-              message: "invalid start_fun argument #{inspect fun}"
+              message: "invalid start_match argument #{inspect fun}"
         end
     end
 
