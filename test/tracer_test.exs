@@ -187,10 +187,12 @@ defmodule Tracer.Test do
     res = start_tool(CallSeq,
                      process: test_pid,
                      forward_to: test_pid,
-                     match: local Tracer.Test.recur_len(list, val))
+                     show_args: true,
+                     show_return: true,
+                     start_match: Tracer.Test)
     assert res == :ok
 
-    # :timer.sleep(50)
+    :timer.sleep(10)
 
     assert_receive :started_tracing
 
@@ -200,12 +202,12 @@ defmodule Tracer.Test do
     res = stop_tool()
     assert res == :ok
 
-    assert_receive %CallSeq.Event{arity: 2, depth: 0, fun: :recur_len, message: [[:list, [1, 2, 3, 4, 5]], [:val, 0]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %CallSeq.Event{arity: 2, depth: 1, fun: :recur_len, message: [[:list, [2, 3, 4, 5]], [:val, 1]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %CallSeq.Event{arity: 2, depth: 2, fun: :recur_len, message: [[:list, [3, 4, 5]], [:val, 2]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %CallSeq.Event{arity: 2, depth: 3, fun: :recur_len, message: [[:list, [4, 5]], [:val, 3]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %CallSeq.Event{arity: 2, depth: 4, fun: :recur_len, message: [[:list, [5]], [:val, 4]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %CallSeq.Event{arity: 2, depth: 5, fun: :recur_len, message: [[:list, []], [:val, 5]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %CallSeq.Event{arity: 2, depth: 0, fun: :recur_len, message: [[[1, 2, 3, 4, 5], 0]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %CallSeq.Event{arity: 2, depth: 1, fun: :recur_len, message: [[[2, 3, 4, 5], 1]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %CallSeq.Event{arity: 2, depth: 2, fun: :recur_len, message: [[[3, 4, 5], 2]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %CallSeq.Event{arity: 2, depth: 3, fun: :recur_len, message: [[[4, 5], 3]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %CallSeq.Event{arity: 2, depth: 4, fun: :recur_len, message: [[[5], 4]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
+    assert_receive %CallSeq.Event{arity: 2, depth: 5, fun: :recur_len, message: [[[], 5]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}
     assert_receive %CallSeq.Event{arity: 2, depth: 5, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
     assert_receive %CallSeq.Event{arity: 2, depth: 4, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}
     assert_receive %CallSeq.Event{arity: 2, depth: 3, fun: :recur_len, message: nil, mod: Tracer.Test, pid: _, return_value: 5, type: :exit}

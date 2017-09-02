@@ -1,7 +1,7 @@
 defmodule Tracer.Server.Test do
   use ExUnit.Case
   alias Tracer.{Server, Probe, Tool,
-                Tool.Count, Tool.Duration, Tool.CallSeq, Tool.Display}
+                Tool.Count, Tool.Duration, Tool.Display}
   import Tracer.Matcher
 
   setup do
@@ -297,45 +297,6 @@ defmodule Tracer.Server.Test do
     assert res == :ok
 
     assert_receive {:done_tracing, :stop_command}
-    # not expeting more events
-    refute_receive(_)
-  end
-
-  test "trace with a call_seq tool" do
-    test_pid = self()
-
-    {:ok, _} = Server.start()
-    probe = Probe.new(
-                type: :call,
-                process: test_pid,
-                match_by: local do Tracer.Server.Test.recur_len(list, val) -> return_trace(); message(list, val) end)
-
-    tool = Tool.new(CallSeq, forward_to: test_pid, probe: probe)
-    :ok = Server.start_tool(tool)
-
-    assert_receive :started_tracing
-
-    recur_len([1, 2, 3, 4, 5], 0)
-
-    :timer.sleep(10)
-    res = Server.stop_tool()
-    assert res == :ok
-
-    assert_receive %CallSeq.Event{arity: 2, depth: 0, fun: :recur_len, message: [[:list, [1, 2, 3, 4, 5]], [:val, 0]], mod: Tracer.Server.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %CallSeq.Event{arity: 2, depth: 1, fun: :recur_len, message: [[:list, [2, 3, 4, 5]], [:val, 1]], mod: Tracer.Server.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %CallSeq.Event{arity: 2, depth: 2, fun: :recur_len, message: [[:list, [3, 4, 5]], [:val, 2]], mod: Tracer.Server.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %CallSeq.Event{arity: 2, depth: 3, fun: :recur_len, message: [[:list, [4, 5]], [:val, 3]], mod: Tracer.Server.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %CallSeq.Event{arity: 2, depth: 4, fun: :recur_len, message: [[:list, [5]], [:val, 4]], mod: Tracer.Server.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %CallSeq.Event{arity: 2, depth: 5, fun: :recur_len, message: [[:list, []], [:val, 5]], mod: Tracer.Server.Test, pid: _, return_value: nil, type: :enter}
-    assert_receive %CallSeq.Event{arity: 2, depth: 5, fun: :recur_len, message: nil, mod: Tracer.Server.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %CallSeq.Event{arity: 2, depth: 4, fun: :recur_len, message: nil, mod: Tracer.Server.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %CallSeq.Event{arity: 2, depth: 3, fun: :recur_len, message: nil, mod: Tracer.Server.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %CallSeq.Event{arity: 2, depth: 2, fun: :recur_len, message: nil, mod: Tracer.Server.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %CallSeq.Event{arity: 2, depth: 1, fun: :recur_len, message: nil, mod: Tracer.Server.Test, pid: _, return_value: 5, type: :exit}
-    assert_receive %CallSeq.Event{arity: 2, depth: 0, fun: :recur_len, message: nil, mod: Tracer.Server.Test, pid: _, return_value: 5, type: :exit}
-
-    assert_receive {:done_tracing, :stop_command}
-
     # not expeting more events
     refute_receive(_)
   end
