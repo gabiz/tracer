@@ -340,4 +340,69 @@ defmodule Tracer.Server.Test do
     refute_receive(_)
   end
 
+  test "child servers are killed after trace finishes" do
+    test_pid = self()
+    {:ok, _} = Server.start()
+    probe = Probe.new(type: :call,
+                      process: self(),
+                      match_by: local do Map.new(a) -> message(a) end)
+
+    tool = Tool.new(Display, forward_to: test_pid, probe: probe)
+    :ok = Server.start_tool(tool)
+
+    state = :sys.get_state(Tracer.Server, 100)
+    %{tracing: _tracing,
+      tool_server_pid: tool_server_pid,
+      agent_pids: [agent_pid],
+      probes: [%{process_list: [^test_pid]}]} = state
+
+    assert Process.alive?(agent_pid)
+    assert Process.alive?(tool_server_pid)
+
+    :ok = Server.stop_tool()
+
+    :timer.sleep(20)
+    refute Process.alive?(agent_pid)
+    refute Process.alive?(tool_server_pid)
+  end
+
+  test "child servers are killed after trace restartes" do
+    test_pid = self()
+    {:ok, _} = Server.start()
+    probe = Probe.new(type: :call,
+                      process: self(),
+                      match_by: local do Map.new(a) -> message(a) end)
+
+    tool = Tool.new(Display, forward_to: test_pid, probe: probe)
+    :ok = Server.start_tool(tool)                 # 1
+
+    :timer.sleep(10)
+    state = :sys.get_state(Tracer.Server, 100)
+    %{tracing: _tracing,
+      tool_server_pid: tool_server_pid,
+      agent_pids: [agent_pid],
+      probes: [%{process_list: [^test_pid]}]} = state
+
+    :ok = Server.start_tool(tool)                 # 2
+
+    :timer.sleep(20)
+    refute Process.alive?(agent_pid)
+    refute Process.alive?(tool_server_pid)
+
+    state = :sys.get_state(Tracer.Server, 10)
+    %{tracing: _tracing,
+      tool_server_pid: tool_server_pid,
+      agent_pids: [agent_pid],
+      probes: [%{process_list: [^test_pid]}]} = state
+
+    assert Process.alive?(agent_pid)
+    assert Process.alive?(tool_server_pid)
+
+    :ok = Server.start_tool(tool)                 # 3
+
+    :timer.sleep(20)
+    refute Process.alive?(agent_pid)
+    refute Process.alive?(tool_server_pid)
+  end
+
 end

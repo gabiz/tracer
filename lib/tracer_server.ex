@@ -125,9 +125,13 @@ defmodule Tracer.Server do
     {:reply, ret, state}
   end
 
-  def handle_info({:EXIT, _pid, :done_reporting},
+  def handle_info({:EXIT, pid, :done_reporting},
       %Server{} = state) do
-    {:noreply, put_in(state.tool_server_pid, nil)}
+    if state.tool_server_pid == pid do
+      {:noreply, put_in(state.tool_server_pid, nil)}
+    else
+      {:noreply, state}
+    end
   end
   def handle_info({:EXIT, pid, {:done_tracing, exit_status}},
       %Server{} = state) do
@@ -189,7 +193,6 @@ defmodule Tracer.Server do
 
     ToolServer.stop(state.tool_server_pid)
     state = put_in(state.tool_server_pid, nil)
-
     {ret, state}
   end
 
