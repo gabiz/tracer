@@ -3,8 +3,8 @@ defmodule Tracer.Tool.Duration do
   Reports duration type traces
   """
   alias __MODULE__
-  alias Tracer.{EventCall, EventReturnFrom, Matcher, Probe, Tool.Duration.Event,
-                Collect}
+  alias Tracer.{EventCall, EventReturnFrom, Matcher, Probe,
+                Tool.Duration.Event, Collect, ProcessHelper}
 
   use Tracer.Tool
 
@@ -28,10 +28,19 @@ defmodule Tracer.Tool.Duration do
           {head, condit, [{:return_trace} | body]}
         end)
         matcher = put_in(matcher.ms, ms_with_return_trace)
-        probe = Probe.new(type: :call,
-                          process: get_process(init_state),
-                          match: matcher)
-        set_probes(init_state, [probe])
+
+        process = init_state
+        |> get_process()
+        |> ProcessHelper.ensure_pid()
+
+        all_child = ProcessHelper.find_all_children(process)
+        probe_call = Probe.new(type: :call,
+                               process: [process | all_child],
+                               match: matcher)
+        probe_spawn = Probe.new(type: :set_on_spawn,
+                                process: [process | all_child])
+
+        set_probes(init_state, [probe_call, probe_spawn])
     end
   end
 

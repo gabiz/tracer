@@ -154,7 +154,9 @@ defmodule Tracer.Tool.Test do
   test "valid?() fails if no probes are configured" do
     tool = TestTool.init([])
 
-    assert Tool.valid?(tool) == {:error, :missing_probes}
+    assert_raise ArgumentError,
+                 "missing probes, maybe a missing match option?",
+                 fn -> Tool.valid?(tool) end
   end
 
   test "valid?() invokes handle_valid?() for tool to validate its own settings" do

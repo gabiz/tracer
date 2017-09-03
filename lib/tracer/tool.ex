@@ -71,6 +71,10 @@ defmodule Tracer.Tool do
         Map.put(state, :"__tool__", tool_state)
       end
 
+      defp get_probes(state) do
+        Tool.get_tool_field(state, :probes)
+      end
+
       defp get_process(state) do
         Tool.get_tool_field(state, :process)
       end
@@ -167,6 +171,13 @@ defmodule Tracer.Tool do
   def valid?(state) do
     with :ok <- ProbeList.valid?(get_probes(state)) do
       handle_valid?(state)
+    else
+      {:error, :missing_probes} ->
+        raise ArgumentError,
+              message: "missing probes, maybe a missing match option?"
+      other ->
+        raise ArgumentError,
+              message: "invalid probe: #{inspect other}"
     end
   end
 

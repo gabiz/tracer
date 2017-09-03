@@ -3,7 +3,7 @@ defmodule Tracer.Tool.Count do
   Reports count type traces
   """
   alias __MODULE__
-  alias Tracer.{EventCall, Probe, Tool.Count.Event}
+  alias Tracer.{EventCall, Probe, Tool.Count.Event, ProcessHelper}
   use Tracer.Tool
 
   defstruct counts: %{}
@@ -14,10 +14,18 @@ defmodule Tracer.Tool.Count do
     case Keyword.get(opts, :match) do
       nil -> init_state
       matcher ->
-        probe = Probe.new(type: :call,
-                          process: get_process(init_state),
-                          match: matcher)
-        set_probes(init_state, [probe])
+        process = init_state
+        |> get_process()
+        |> ProcessHelper.ensure_pid()
+
+        all_child = ProcessHelper.find_all_children(process)
+        probe_call = Probe.new(type: :call,
+                               process: [process | all_child],
+                               match: matcher)
+        probe_spawn = Probe.new(type: :set_on_spawn,
+                                process: [process | all_child])
+
+        set_probes(init_state, [probe_call, probe_spawn])
     end
   end
 
