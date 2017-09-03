@@ -41,7 +41,7 @@ defmodule Tracer.Server.Test do
     {:ok, _} = Server.start()
     probe = Probe.new(type: :call,
                       process: self(),
-                      match_by: local do Map.new(a) -> message(a) end)
+                      match: local do Map.new(a) -> message(a) end)
 
     tool = Tool.new(Display, forward_to: test_pid, probe: probe)
     :ok = Server.start_tool(tool)
@@ -80,7 +80,7 @@ defmodule Tracer.Server.Test do
     {:ok, _} = Server.start()
     probe = Probe.new(type: :call,
                       process: self(),
-                      match_by: local do Map.new(a) -> message(a) end)
+                      match: local do Map.new(a) -> message(a) end)
     tool = Tool.new(Display, forward_to: test_pid, probe: probe)
     :ok = Server.start_tool(tool)
 
@@ -118,7 +118,7 @@ defmodule Tracer.Server.Test do
     {:ok, _} = Server.start()
     probe = Probe.new(type: :call,
                       process: self(),
-                      match_by: local do Map.new(a) -> message(a) end)
+                      match: local do Map.new(a) -> message(a) end)
 
     tool = Tool.new(Display, forward_to: test_pid, probe: probe,
                     max_message_count: 1)
@@ -159,7 +159,7 @@ defmodule Tracer.Server.Test do
     {:ok, _} = Server.start()
     probe = Probe.new(type: :call,
                       process: :all,
-                      match_by: local do Map.new(a) -> message(a) end)
+                      match: local do Map.new(a) -> message(a) end)
 
     tool = Tool.new(Display, nodes: [remote_node_a], forward_to: test_pid, probe: probe)
     :ok = Server.start_tool(tool)
@@ -184,7 +184,7 @@ defmodule Tracer.Server.Test do
     probe = Probe.new(
                 type: :call,
                 process: test_pid,
-                match_by: local do String.split(a, b) -> message(a, b) end)
+                match: local do String.split(a, b) -> message(a, b) end)
 
     tool = Tool.new(Count, forward_to: test_pid, probe: probe)
     :ok = Server.start_tool(tool)
@@ -223,7 +223,7 @@ defmodule Tracer.Server.Test do
     probe = Probe.new(
                 type: :call,
                 process: test_pid,
-                match_by: local do Tracer.Server.Test.recur_len(list, val) -> return_trace(); message(list, val) end)
+                match: local do Tracer.Server.Test.recur_len(list, val) -> return_trace(); message(list, val) end)
 
     tool = Tool.new(Duration, forward_to: test_pid, probe: probe)
     :ok = Server.start_tool(tool)
@@ -253,7 +253,7 @@ defmodule Tracer.Server.Test do
     probe = Probe.new(
                 type: :call,
                 process: test_pid,
-                match_by: local do String.split(string, pattern) -> return_trace(); message(string, pattern) end)
+                match: local do String.split(string, pattern) -> return_trace(); message(string, pattern) end)
 
     tool = Tool.new(Display, forward_to: test_pid, probe: probe)
     :ok = Server.start_tool(tool)
@@ -306,7 +306,7 @@ defmodule Tracer.Server.Test do
     {:ok, _} = Server.start()
     probe = Probe.new(type: :call,
                       process: self(),
-                      match_by: local do Map.new(a) -> message(a) end)
+                      match: local do Map.new(a) -> message(a) end)
 
     tool = Tool.new(Display, forward_to: test_pid, probe: probe)
     :ok = Server.start_tool(tool)
@@ -332,7 +332,7 @@ defmodule Tracer.Server.Test do
     {:ok, _} = Server.start()
     probe = Probe.new(type: :call,
                       process: self(),
-                      match_by: local do Map.new(a) -> message(a) end)
+                      match: local do Map.new(a) -> message(a) end)
 
     tool = Tool.new(Display, forward_to: test_pid, probe: probe)
     :ok = Server.start_tool(tool)                 # 1

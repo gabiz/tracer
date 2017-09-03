@@ -30,7 +30,7 @@ defmodule Tracer.Tool.Duration do
         matcher = put_in(matcher.ms, ms_with_return_trace)
         probe = Probe.new(type: :call,
                           process: get_process(init_state),
-                          match_by: matcher)
+                          match: matcher)
         set_probes(init_state, [probe])
     end
   end

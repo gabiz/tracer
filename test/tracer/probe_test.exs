@@ -111,12 +111,11 @@ defmodule Tracer.Probe.Test do
     assert Enum.member?(probe.flags, :arity)
   end
 
-  test "probe can be created using with_fun option" do
+  test "probe can be created using with fun option" do
     probe = Probe.new(
             type: :call,
             process: self(),
-            with_fun: {Map, :get, 2})
-            # match_by: global do (a, b) -> message(a, b) end)
+            match: {Map, :get, 2})
 
     %Probe{} = probe
     assert probe.type == :call
@@ -124,15 +123,13 @@ defmodule Tracer.Probe.Test do
     assert Enum.count(probe.clauses) == 1
     clause = hd(probe.clauses)
     assert Clause.get_mfa(clause) == {Map, :get, 2}
-    # expected_specs = match do (a, b) -> message(a, b) end
-    # assert clause.match_specs == expected_specs
   end
 
   test "probe can be created using only match_by option" do
     probe = Probe.new(
             type: :call,
             process: self(),
-            match_by: global do Map.get(a, b) -> message(a, b) end)
+            match: global do Map.get(a, b) -> message(a, b) end)
 
     %Probe{} = probe
     assert probe.type == :call
@@ -150,8 +147,8 @@ defmodule Tracer.Probe.Test do
     probe = Probe.new(
             type: :call,
             process: self(),
-            match_by: global do Map.get(a, b) -> message(a, b) end,
-            match_by: local do String.split(a, b) -> message(a, b) end)
+            match: global do Map.get(a, b) -> message(a, b) end,
+            match: local do String.split(a, b) -> message(a, b) end)
 
     %Probe{} = probe
     assert probe.type == :call
@@ -172,28 +169,11 @@ defmodule Tracer.Probe.Test do
     assert clause.match_specs == expected_specs
   end
 
-  # test "probe can be created using type shortcut" do
-  #   probe = Probe.call(
-  #           process: self(),
-  #           match_by: global do Map.get(a, b) -> message(a, b) end)
-  #
-  #   %Probe{} = probe
-  #   assert probe.type == :call
-  #   assert probe.process_list == [self()]
-  #   assert probe.flags == [:arity, :timestamp]
-  #   assert Enum.count(probe.clauses) == 1
-  #   clause = hd(probe.clauses)
-  #   assert Clause.get_mfa(clause) == {Map, :get, 2}
-  #   assert Clause.get_flags(clause) == [:global]
-  #   expected_specs = match do (a, b) -> message(a, b) end
-  #   assert clause.match_specs == expected_specs
-  # end
-
   test "get_trace_cmds returns the expected command list" do
     probe = Probe.new(
             type: :call,
             process: self(),
-            match_by: global do Map.get(a, b) -> message(a, b) end)
+            match: global do Map.get(a, b) -> message(a, b) end)
 
     [trace_pattern_cmd, trace_cmd] = Probe.get_trace_cmds(probe)
 

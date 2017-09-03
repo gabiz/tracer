@@ -24,7 +24,7 @@ defmodule Tracer.Test do
 
     tool = Tracer.tool(Display, forward_to: test_pid)
     |> Tracer.Tool.add_probe(Tracer.probe(type: :call, process: :all,
-                                  match_by: local do Map.new() -> :ok end))
+                                  match: local do Map.new() -> :ok end))
     |> Tracer.Tool.add_probe(Tracer.probe(type: :gc, process: self()))
     |> Tracer.Tool.add_probe(Tracer.probe(type: :set_on_link, process: [self()]))
     |> Tracer.Tool.add_probe(Tracer.probe(type: :procs, process: [self()]))

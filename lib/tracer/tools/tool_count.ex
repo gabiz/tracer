@@ -16,7 +16,7 @@ defmodule Tracer.Tool.Count do
       matcher ->
         probe = Probe.new(type: :call,
                           process: get_process(init_state),
-                          match_by: matcher)
+                          match: matcher)
         set_probes(init_state, [probe])
     end
   end

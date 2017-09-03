@@ -50,7 +50,7 @@ defmodule Tracer.AgentCmds.Test do
     probe = Probe.new(
                 type: :call,
                 process: self(),
-                match_by: global do Map.new(%{items: [a, b]}) -> message(a, b) end)
+                match: global do Map.new(%{items: [a, b]}) -> message(a, b) end)
 
     # Run
     tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
@@ -82,7 +82,7 @@ defmodule Tracer.AgentCmds.Test do
     probe = Probe.new(
                 type: :call,
                 process: my_pid,
-                match_by: global do Map.new(%{items: [a, b]}) -> message(a, b) end)
+                match: global do Map.new(%{items: [a, b]}) -> message(a, b) end)
 
     tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
     [trace_pattern_cmd, trace_cmd] =
@@ -110,7 +110,7 @@ defmodule Tracer.AgentCmds.Test do
     probe = Probe.new(
                 type: :call,
                 process: self(),
-                match_by: global do Map.new(%{items: [a, b]}) -> message(a, b) end)
+                match: global do Map.new(%{items: [a, b]}) -> message(a, b) end)
 
     tracer_pid = spawn fn -> test_tracer_proc(forward_to: my_pid) end
     agent_pids = AgentCmds.start(nil, [probe], forward_pid: tracer_pid)
@@ -147,8 +147,8 @@ defmodule Tracer.AgentCmds.Test do
                 type: :call,
                 process: self(),
                 # with_fun: {Tracer.Tracer.Test, :local_function, 1},
-                # match_by: local do (a) -> message(a) end)
-                match_by: local do Tracer.AgentCmds.Test.local_function(a) -> message(a) end)
+                # match: local do (a) -> message(a) end)
+                match: local do Tracer.AgentCmds.Test.local_function(a) -> message(a) end)
 
     agent_pids = AgentCmds.start(nil, [probe], forward_pid: self())
     assert is_list(agent_pids) and length(agent_pids) > 0

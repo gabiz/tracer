@@ -4,7 +4,7 @@ defmodule Tracer.Probe do
   """
 
   alias __MODULE__
-  alias Tracer.Clause
+  alias Tracer.{Clause, Matcher}
 
   @valid_types [:call, :procs, :gc, :sched, :send, :receive,
                 :set_on_spawn, :set_on_first_spawn,
@@ -23,7 +23,7 @@ defmodule Tracer.Probe do
   }
 
   @new_options [
-    :type, :process, :with_fun, :match_by
+    :type, :process, :match
   ]
 
   defstruct type: nil,
@@ -231,7 +231,7 @@ defmodule Tracer.Probe do
     add_process(probe, process)
   end
 
-  def with_fun(probe, fun) when is_function(fun) do
+  def match(probe, fun) when is_function(fun) do
     case probe.clauses do
       [] ->
         put_in(probe.clauses, [Clause.new() |> Clause.put_fun(fun)])
@@ -240,9 +240,9 @@ defmodule Tracer.Probe do
     end
   end
 
-  def with_fun(probe, {m}), do: with_fun(probe, {m, :_, :_})
-  def with_fun(probe, {m, f}), do: with_fun(probe, {m, f, :_})
-  def with_fun(probe, {m, f, a}) do
+  def match(probe, {m}), do: match(probe, {m, :_, :_})
+  def match(probe, {m, f}), do: match(probe, {m, f, :_})
+  def match(probe, {m, f, a}) do
     case probe.clauses do
       [] ->
         put_in(probe.clauses, [Clause.new() |> Clause.put_mfa(m, f, a)])
@@ -251,7 +251,7 @@ defmodule Tracer.Probe do
     end
   end
 
-  def match_by(probe, matcher) do
+  def match(probe, %Matcher{} = matcher) do
     {m, f, a} = Map.get(matcher, :mfa)
     clause = Clause.new()
       |> Clause.add_matcher(Map.get(matcher, :ms))

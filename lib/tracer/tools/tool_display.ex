@@ -17,7 +17,7 @@ defmodule Tracer.Tool.Display do
         type = Keyword.get(opts, :type, :call)
         probe = Probe.new(type: type,
                           process: get_process(init_state),
-                          match_by: matcher)
+                          match: matcher)
         set_probes(init_state, [probe])
     end
   end

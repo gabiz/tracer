@@ -60,7 +60,7 @@ defmodule Tracer.Tool.CallSeq do
     all_child = ProcessHelper.find_all_children(process)
     probe_call = Probe.new(type: :call,
                            process: [process | all_child],
-                           match_by: match_spec)
+                           match: match_spec)
     probe_spawn = Probe.new(type: :set_on_spawn,
                             process: [process | all_child])
 
