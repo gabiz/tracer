@@ -4,7 +4,7 @@ defmodule Tracer.Tool.CallSeq do
   """
   alias __MODULE__
   alias Tracer.{EventCall, EventReturnFrom, Probe,
-                ToolHelper, Tool.CallSeq.Event}
+                ToolHelper, Tool.CallSeq.Event, ProcessHelper}
 
   use Tracer.Tool
   import Tracer.Matcher
@@ -25,7 +25,7 @@ defmodule Tracer.Tool.CallSeq do
     init_state = %CallSeq{}
     |> init_tool(opts, @allowed_opts)
     |> Map.put(:ignore_recursion,
-               Keyword.get(opts, :ignore_recursion, false))
+               Keyword.get(opts, :ignore_recursion, true))
     |> Map.put(:max_depth,
               Keyword.get(opts, :max_depth, 20))
     |> Map.put(:show_args,
@@ -53,11 +53,18 @@ defmodule Tracer.Tool.CallSeq do
     else
       local do _ -> return_trace() end
     end
-    probe = Probe.new(type: :call,
-                      process: get_process(init_state),
-                      match_by: match_spec)
+    process = init_state
+    |> get_process()
+    |> ProcessHelper.ensure_pid()
 
-    set_probes(init_state, [probe])
+    all_child = ProcessHelper.find_all_children(process)
+    probe_call = Probe.new(type: :call,
+                           process: [process | all_child],
+                           match_by: match_spec)
+    probe_spawn = Probe.new(type: :set_on_spawn,
+                            process: [process | all_child])
+
+    set_probes(init_state, [probe_call, probe_spawn])
   end
 
   def handle_event(event, state) do

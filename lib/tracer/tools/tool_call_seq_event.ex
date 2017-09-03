@@ -17,22 +17,46 @@ defmodule Tracer.Tool.CallSeq.Event do
     def to_string(%Event{type: :enter} = event) do
       String.duplicate(" ", event.depth) <>
         "-> #{inspect event.mod}.#{event.fun}/#{event.arity} " <>
-        "#{message_to_string event.message}"
+        "#{message_to_string event.message, event.depth+5}"
     end
     def to_string(%Event{type: :exit} = event) do
       String.duplicate(" ", event.depth) <>
         "<- #{inspect event.mod}.#{event.fun}/#{event.arity} " <>
-        "#{inspect event.return_value}"
+        if is_nil(event.return_value), do: "",
+      else: "#{safe_inspect(event.return_value, event.depth+5)}"
     end
 
-    defp message_to_string(nil), do: ""
-    defp message_to_string(term) when is_list(term) do
+    defp message_to_string(nil, _depth), do: ""
+    defp message_to_string(term, depth) when is_list(term) do
       term
       |> Enum.map(fn
         [key, val] -> {key, val}
         other -> "#{inspect other}"
       end)
-      |> inspect()
+      |> safe_inspect(depth)
+    end
+
+    # borrowed from https://github.com/fishcakez/dbg
+    def safe_inspect(term, depth) do
+      options = IEx.configuration()
+      inspect_options = Keyword.get(options, :inspect, [])
+      try do
+        inspect(term, inspect_options)
+      else
+        formatted ->
+          indent(formatted, depth)
+      catch
+        _, _ ->
+          term
+          |> inspect([records: false, structs: false] ++ inspect_options)
+          |> indent(depth)
+      end
+    end
+
+    defp indent(formatted, depth) do
+      formatted
+      |> :binary.split([<<?\n>>], [:global])
+      |> Enum.map(&(["\n" <> String.duplicate(" ", depth) | &1]))
     end
   end
 

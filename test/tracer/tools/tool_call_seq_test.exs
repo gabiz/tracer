@@ -32,9 +32,8 @@ defmodule Tracer.Tool.CallSeq.Test do
                      show_args: true,
                      show_return: true,
                      max_depth: 16,
-                    #  ignore_recursion: true,
+                     ignore_recursion: false,
                      forward_to: test_pid,
-                    #  start_fun: &Test.recur_len/2)
                      start_match: Test)
     assert res == :ok
 
@@ -71,7 +70,6 @@ defmodule Tracer.Tool.CallSeq.Test do
 
     res = start_tool(CallSeq,
                      process: test_pid,
-                     ignore_recursion: true,
                      forward_to: test_pid,
                      start_match: &Test.recur_len/2)
                     # start_match: Test)

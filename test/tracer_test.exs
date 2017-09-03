@@ -189,6 +189,7 @@ defmodule Tracer.Test do
                      forward_to: test_pid,
                      show_args: true,
                      show_return: true,
+                     ignore_recursion: false,
                      start_match: Tracer.Test)
     assert res == :ok
 
