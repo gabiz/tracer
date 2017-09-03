@@ -64,7 +64,7 @@ defmodule Tracer.Tool.Test do
     tool = TestTool.init(process: :c.pid(0, 42, 0),
                           forward_to: :c.pid(0, 43, 0),
                           max_message_count: 777,
-                          max_message_queue_size: 2000,
+                          max_queue_size: 2000,
                           max_tracing_time: 10_000,
                           nodes: [:"local@127,0.0,1", :"remote@127.0.0.1"],
                           probes: [Probe.new(type: :call, process: self())],
@@ -77,7 +77,7 @@ defmodule Tracer.Tool.Test do
       forward_to: :c.pid(0, 43, 0),
       agent_opts: [
         max_message_count: 777,
-        max_message_queue_size: 2000,
+        max_queue_size: 2000,
         max_tracing_time: 10_000,
         nodes: [:"local@127,0.0,1", :"remote@127.0.0.1"],
       ],

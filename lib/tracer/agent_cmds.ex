@@ -25,7 +25,7 @@ defmodule Tracer.AgentCmds do
 
     optional_keys = [:max_tracing_time,
                      :max_message_count,
-                     :max_message_queue_size]
+                     :max_queue_size]
     agent_flags = [start_trace_cmds: start_cmds,
                    stop_trace_cmds: stop_cmds,
                    forward_pid: tracer_pid] ++

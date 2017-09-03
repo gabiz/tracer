@@ -50,9 +50,9 @@ as it processes events.
       state
     end
 
-    state = if Keyword.get(opts, :max_message_queue_size) != nil do
+    state = if Keyword.get(opts, :max_queue_size) != nil do
       put_in(state.pid_handler_opts,
-          [{:max_message_queue_size, Keyword.get(opts, :max_message_queue_size)}
+          [{:max_queue_size, Keyword.get(opts, :max_queue_size)}
            | state.pid_handler_opts])
     else
       state

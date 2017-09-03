@@ -17,7 +17,7 @@ defmodule Tracer.Tool.CallSeq.Test do
 
   test "CallSeq fails when called with invalid option" do
     assert_raise ArgumentError, "not supported options: foo, bar", fn ->
-      start_tool(CallSeq, foo: 4, bar: 5)
+      run(CallSeq, foo: 4, bar: 5)
     end
   end
 
@@ -27,14 +27,14 @@ defmodule Tracer.Tool.CallSeq.Test do
   test "CallSeq with start_mach module, show args" do
     test_pid = self()
 
-    res = start_tool(CallSeq,
-                     process: test_pid,
-                     show_args: true,
-                     show_return: true,
-                     max_depth: 16,
-                     ignore_recursion: false,
-                     forward_to: test_pid,
-                     start_match: Test)
+    res = run(CallSeq,
+              process: test_pid,
+              show_args: true,
+              show_return: true,
+              max_depth: 16,
+              ignore_recursion: false,
+              forward_to: test_pid,
+              start_match: Test)
     assert res == :ok
 
     :timer.sleep(10)
@@ -44,7 +44,7 @@ defmodule Tracer.Tool.CallSeq.Test do
     recur_len([1, 2, 3, 4, 5], 0)
 
     :timer.sleep(10)
-    res = stop_tool()
+    res = stop()
     assert res == :ok
 
     assert_receive %CallSeq.Event{arity: 2, depth: 0, fun: :recur_len, message: [[[1, 2, 3, 4, 5], 0]], mod: Test, pid: _, return_value: nil, type: :enter}
@@ -68,11 +68,10 @@ defmodule Tracer.Tool.CallSeq.Test do
   test "CallSeq with start_mach fun, ignore_recursion" do
     test_pid = self()
 
-    res = start_tool(CallSeq,
-                     process: test_pid,
-                     forward_to: test_pid,
-                     start_match: &Test.recur_len/2)
-                    # start_match: Test)
+    res = run(CallSeq,
+              process: test_pid,
+              forward_to: test_pid,
+              start_match: &Test.recur_len/2)
     assert res == :ok
 
     :timer.sleep(10)
@@ -82,7 +81,7 @@ defmodule Tracer.Tool.CallSeq.Test do
     recur_len([1, 2, 3, 4, 5], 0)
 
     :timer.sleep(10)
-    res = stop_tool()
+    res = stop()
     assert res == :ok
 
     assert_receive %CallSeq.Event{arity: 2, depth: 0, fun: :recur_len, message: nil, mod: Test, pid: _, return_value: nil, type: :enter}

@@ -13,7 +13,7 @@ defmodule Tracer.Tool do
 
       @__allowed_opts__ [:probe, :probes, :forward_to, :process,
                         :max_tracing_time, :max_message_count,
-                        :max_message_queue_size, :nodes]
+                        :max_queue_size, :nodes]
 
       def init_tool(_, _, _allowed_opts \\ nil)
       def init_tool(%{"__struct__": mod} = state, opts, allowed_opts)
@@ -51,7 +51,7 @@ defmodule Tracer.Tool do
       defp extract_agent_opts(opts) do
         agents_keys = [:max_tracing_time,
                        :max_message_count,
-                       :max_message_queue_size,
+                       :max_queue_size,
                        :nodes]
        Enum.filter(opts,
                    fn {key, _} -> Enum.member?(agents_keys, key) end)

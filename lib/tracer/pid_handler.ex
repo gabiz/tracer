@@ -7,11 +7,11 @@ defmodule Tracer.PidHandler do
   import Tracer.Macros
 
   @default_max_message_count  1000
-  @default_max_message_queue_size 1000
+  @default_max_queue_size 1000
 
   defstruct message_count: 0,
             max_message_count: @default_max_message_count,
-            max_message_queue_size: @default_max_message_queue_size,
+            max_queue_size: @default_max_queue_size,
             event_callback: nil
 
   def start(opts) when is_list(opts) do
@@ -80,7 +80,7 @@ defmodule Tracer.PidHandler do
     end
   end
 
-  defp check_message_queue_size(%PidHandler{max_message_queue_size: max}) do
+  defp check_message_queue_size(%PidHandler{max_queue_size: max}) do
     case :erlang.process_info(self(), :message_queue_len) do
       {:message_queue_len, len} when len > max ->
          exit({:message_queue_size, len})

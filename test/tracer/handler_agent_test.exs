@@ -18,13 +18,13 @@ defmodule Tracer.HandlerAgent.Test do
 
   test "start() stores the handler_pid options" do
     pid = HandlerAgent.start(max_message_count: 123,
-                            max_message_queue_size: 456,
+                            max_queue_size: 456,
                             event_callback: &Map.new/1)
 
     send pid, {:get_pid_handler_opts, self()}
     assert_receive {:pid_handler_opts, pid_handler_opts}
     assert Keyword.get(pid_handler_opts, :max_message_count) == 123
-    assert Keyword.get(pid_handler_opts, :max_message_queue_size) == 456
+    assert Keyword.get(pid_handler_opts, :max_queue_size) == 456
     assert Keyword.get(pid_handler_opts, :event_callback) == &Map.new/1
   end
 
@@ -63,7 +63,7 @@ defmodule Tracer.HandlerAgent.Test do
 
   test "agent_handler process finishes after max queue size triggers" do
     Process.flag(:trap_exit, true)
-    pid = HandlerAgent.start(max_message_queue_size: 1,
+    pid = HandlerAgent.start(max_queue_size: 1,
                              event_callback: fn _event ->
                                 :timer.sleep(20);
                                 :ok end)

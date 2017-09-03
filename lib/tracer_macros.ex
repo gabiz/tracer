@@ -6,7 +6,8 @@ defmodule Tracer.Macros do
   defmacro delegate(fun, list) do
     quote do
       def unquote(fun)() do
-        apply(Keyword.get(unquote(list), :to), unquote(fun), [])
+        apply(Keyword.get(unquote(list), :to),
+              Keyword.get(unquote(list), :as), [])
       end
     end
   end
@@ -14,7 +15,8 @@ defmodule Tracer.Macros do
   defmacro delegate_1(fun, list) do
     quote do
       def unquote(fun)(param) do
-        apply(Keyword.get(unquote(list), :to), unquote(fun), [param])
+        apply(Keyword.get(unquote(list), :to),
+              Keyword.get(unquote(list), :as), [param])
       end
     end
   end

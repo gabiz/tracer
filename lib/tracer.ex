@@ -14,11 +14,10 @@ defmodule Tracer do
     end
   end
 
-  delegate :start, to: Server
-  delegate :stop, to: Server
-  delegate :stop_tool, to: Server
-
-  delegate_1 :set_tool, to: Server
+  delegate :start_server, to: Server, as: :start
+  delegate :stop_server, to: Server, as: :stop
+  delegate :stop, to: Server, as: :stop_tool
+  delegate_1 :set_tool, to: Server, as: :set_tool
 
   def probe(params) do
     Probe.new(params)
@@ -32,10 +31,10 @@ defmodule Tracer do
     Tool.new(type, params)
   end
 
-  def start_tool(%{"__tool__": _} = tool) do
+  def run(%{"__tool__": _} = tool) do
     Server.start_tool(tool)
   end
-  def start_tool(type, params) do
+  def run(type, params) do
     Server.start_tool(tool(type, params))
   end
 

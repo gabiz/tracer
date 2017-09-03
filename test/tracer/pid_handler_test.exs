@@ -70,7 +70,7 @@ defmodule Tracer.PidHandler.Test do
 
   test "process exits if too many messages wait in mailbox" do
     Process.flag(:trap_exit, true)
-    pid = PidHandler.start(max_message_queue_size: 10,
+    pid = PidHandler.start(max_queue_size: 10,
                            event_callback: fn _event ->
                               :timer.sleep(20);
                               :ok end)

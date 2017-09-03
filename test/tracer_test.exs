@@ -18,7 +18,7 @@ defmodule Tracer.Test do
   end
 
   test "can add multiple probes" do
-    {:ok, pid} = Tracer.start()
+    {:ok, pid} = Tracer.start_server()
     assert Process.alive?(pid)
     test_pid = self()
 
@@ -62,7 +62,7 @@ defmodule Tracer.Test do
               process_list: [test_pid], type: :sched}
             ]
 
-      Tracer.start_tool(tool)
+      Tracer.run(tool)
 
       %{tracing: true} = :sys.get_state(Tracer.Server, 100)
 
@@ -86,7 +86,7 @@ defmodule Tracer.Test do
   test "display tool" do
     test_pid = self()
 
-    res = start_tool(Display,
+    res = run(Display,
                      forward_to: test_pid,
                      process: test_pid,
                      match: local do Map.new() -> :ok end)
@@ -98,7 +98,7 @@ defmodule Tracer.Test do
     Map.new()
 
     assert_receive :started_tracing
-    res = stop_tool()
+    res = stop()
     assert res == :ok
 
     assert_receive %Tracer.EventCall{arity: 0, fun: :new, message: nil,
@@ -112,7 +112,7 @@ defmodule Tracer.Test do
   test "count tool" do
     test_pid = self()
 
-    res = start_tool(Count,
+    res = run(Count,
                      process: test_pid,
                      forward_to: test_pid,
                      match: global do Map.new(%{a: a}); Map.new(%{b: b}) end)
@@ -136,7 +136,7 @@ defmodule Tracer.Test do
     Map.new(%{b: :bar})
 
     assert_receive :started_tracing
-    res = stop_tool()
+    res = stop()
     assert res == :ok
 
     assert_receive %Count.Event{counts:
@@ -154,10 +154,10 @@ defmodule Tracer.Test do
   test "duration tool" do
     test_pid = self()
 
-    res = start_tool(Duration,
-                     process: test_pid,
-                     forward_to: test_pid,
-                     match: local Tracer.Test.recur_len(list, val))
+    res = run(Duration,
+               process: test_pid,
+               forward_to: test_pid,
+               match: local Tracer.Test.recur_len(list, val))
     assert res == :ok
 
     :timer.sleep(50)
@@ -173,7 +173,7 @@ defmodule Tracer.Test do
     assert_receive(%{pid: ^test_pid, mod: Tracer.Test, fun: :recur_len,
         arity: 2, duration: _, message: [[:list, [1, 2, 3, 5]], [:val, 2]]})
 
-    res = stop_tool()
+    res = stop()
     assert res == :ok
 
     assert_receive {:done_tracing, :stop_command}
@@ -184,13 +184,13 @@ defmodule Tracer.Test do
   test "call_seq tool" do
     test_pid = self()
 
-    res = start_tool(CallSeq,
-                     process: test_pid,
-                     forward_to: test_pid,
-                     show_args: true,
-                     show_return: true,
-                     ignore_recursion: false,
-                     start_match: Tracer.Test)
+    res = run(CallSeq,
+               process: test_pid,
+               forward_to: test_pid,
+               show_args: true,
+               show_return: true,
+               ignore_recursion: false,
+               start_match: Tracer.Test)
     assert res == :ok
 
     :timer.sleep(10)
@@ -200,7 +200,7 @@ defmodule Tracer.Test do
     recur_len([1, 2, 3, 4, 5], 0)
 
     :timer.sleep(10)
-    res = stop_tool()
+    res = stop()
     assert res == :ok
 
     assert_receive %CallSeq.Event{arity: 2, depth: 0, fun: :recur_len, message: [[[1, 2, 3, 4, 5], 0]], mod: Tracer.Test, pid: _, return_value: nil, type: :enter}

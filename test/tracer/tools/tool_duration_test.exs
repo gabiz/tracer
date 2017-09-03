@@ -19,10 +19,10 @@ defmodule Tracer.Duration.Test do
   test "duration tool without aggregaton" do
     test_pid = self()
 
-    res = start_tool(Duration,
-                     process: test_pid,
-                     forward_to: test_pid,
-                     match: local Map.new(val))
+    res = run(Duration,
+              process: test_pid,
+              forward_to: test_pid,
+              match: local Map.new(val))
     assert res == :ok
 
     :timer.sleep(50)
@@ -38,7 +38,7 @@ defmodule Tracer.Duration.Test do
     assert_receive(%{pid: ^test_pid, mod: Map, fun: :new,
         arity: 1, duration: _, message: [[:val, %{a: :foo}]]})
 
-    res = stop_tool()
+    res = stop()
     assert res == :ok
 
     assert_receive {:done_tracing, :stop_command}
@@ -49,11 +49,11 @@ defmodule Tracer.Duration.Test do
   test "duration tool with aggregaton" do
     test_pid = self()
 
-    res = start_tool(Duration,
-                     process: test_pid,
-                     aggregation: :dist,
-                     forward_to: test_pid,
-                     match: local Map.new(val))
+    res = run(Duration,
+              process: test_pid,
+              aggregation: :dist,
+              forward_to: test_pid,
+              match: local Map.new(val))
     assert res == :ok
     :timer.sleep(50)
 
@@ -63,7 +63,7 @@ defmodule Tracer.Duration.Test do
     assert_receive :started_tracing
     :timer.sleep(50)
 
-    res = stop_tool()
+    res = stop()
     assert res == :ok
 
     assert_receive %Duration.Event{arity: 1, duration: %{}, fun: :new, message: [[:val, %{}]], mod: Map, pid: ^test_pid}
