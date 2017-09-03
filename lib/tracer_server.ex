@@ -59,10 +59,6 @@ defmodule Tracer.Server do
       ensure_server_up do
         GenServer.call(@server_name, {:set_tool, tool})
       end
-    else
-      error ->
-        raise RuntimeError,
-              message: "Invalid tool configuration: #{inspect error}"
     end
   end
   def set_tool(_) do
@@ -70,8 +66,10 @@ defmodule Tracer.Server do
   end
 
   def start_tool(%{"__tool__": _} = tool) do
-    ensure_server_up do
-      GenServer.call(@server_name, {:start_tool, tool})
+    with :ok <- Tool.valid?(tool) do
+      ensure_server_up do
+        GenServer.call(@server_name, {:start_tool, tool})
+      end
     end
   end
 

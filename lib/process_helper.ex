@@ -2,6 +2,13 @@ defmodule Tracer.ProcessHelper do
   @moduledoc """
   Implements helper functions to find OTP process hierarchy
   """
+
+  @process_keywords [:all, :processes, :ports, :existing, :existing_processes,
+                      :existing_ports, :new, :new_processes]
+
+  @process_keywords |> Enum.each(fn keyword ->
+    def ensure_pid(unquote(keyword)), do: unquote(keyword)
+  end)
   def ensure_pid(pid) when is_pid(pid), do: pid
   def ensure_pid(name) when is_atom(name) do
     case Process.whereis(name) do
@@ -12,6 +19,9 @@ defmodule Tracer.ProcessHelper do
     end
   end
 
+  @process_keywords |> Enum.each(fn keyword ->
+    def type(unquote(keyword)), do: :keyword
+  end)
   def type(pid) do
     dict = pid
     |> ensure_pid()
@@ -30,6 +40,9 @@ defmodule Tracer.ProcessHelper do
     end
   end
 
+  @process_keywords |> Enum.each(fn keyword ->
+    def find_children(unquote(keyword)), do: []
+  end)
   def find_children(pid) do
     pid = ensure_pid(pid)
     case type(pid) do
@@ -43,6 +56,9 @@ defmodule Tracer.ProcessHelper do
     end
   end
 
+  @process_keywords |> Enum.each(fn keyword ->
+    def find_all_children(unquote(keyword)), do: []
+  end)
   def find_all_children(pid) do
     pid = ensure_pid(pid)
     case type(pid) do

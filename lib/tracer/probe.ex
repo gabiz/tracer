@@ -261,4 +261,9 @@ defmodule Tracer.Probe do
     put_in(probe.clauses, [clause | probe.clauses])
   end
 
+  def match(_, _) do
+    raise ArgumentError,
+        message: "Not a valid matcher, check your syntax. Forgot local/global?"
+  end
+
 end
