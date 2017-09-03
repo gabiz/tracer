@@ -3,14 +3,22 @@ defmodule Tracer.Tool.Duration do
   Reports duration type traces
   """
   alias __MODULE__
-  alias Tracer.{EventCall, EventReturnFrom, Matcher, Probe, Tool.Duration.Event}
+  alias Tracer.{EventCall, EventReturnFrom, Matcher, Probe, Tool.Duration.Event,
+                Collect}
+
   use Tracer.Tool
 
   defstruct durations: %{},
-            stacks: %{}
+            aggregation: nil,
+            stacks: %{},
+            collect: nil
 
   def init(opts) when is_list(opts) do
-    init_state = init_tool(%Duration{}, opts, [:match])
+    init_state = %Duration{}
+    |> init_tool(opts, [:match, :aggregation])
+    |> Map.put(:aggregation,
+                aggreg_fun(Keyword.get(opts, :aggregation, nil)))
+    |> Map.put(:collect, Collect.new())
 
     case Keyword.get(opts, :match) do
       nil -> init_state
@@ -53,16 +61,18 @@ defmodule Tracer.Tool.Duration do
           [{^mod, ^fun, ^arity, entry_ts, c} | poped_stack] ->
             duration = exit_ts - entry_ts
 
-            report_event(state, %Event{
+            event = %Event{
                 duration: duration,
                 pid: pid,
                 mod: mod,
                 fun: fun,
                 arity: arity,
                 message: c
-              })
+            }
 
-            put_in(state.stacks, Map.put(state.stacks, key, poped_stack))
+            state
+            |> handle_aggregation_if_needed(event)
+            |> Map.put(:stacks, Map.put(state.stacks, key, poped_stack))
           _ ->
             report_event(state, "entry point not found for" <>
                               " #{inspect mod}.#{fun}/#{arity}")
@@ -72,8 +82,61 @@ defmodule Tracer.Tool.Duration do
     end
   end
 
+  def handle_stop(%Duration{aggregation: nil} = state), do: state
+  def handle_stop(state) do
+    state.collect
+    |> Collect.get_collections()
+    |> Enum.each(fn {{pid, mod, fun, arity, message}, value} ->
+      event = %Event{
+          duration: state.aggregation.(value),
+          pid: pid,
+          mod: mod,
+          fun: fun,
+          arity: arity,
+          message: message
+      }
+
+      report_event(state, event)
+    end)
+    state
+  end
+
+  defp handle_aggregation_if_needed(%Duration{aggregation: nil} = state,
+                                    event) do
+    report_event(state, event)
+    state
+  end
+  defp handle_aggregation_if_needed(state,
+    %Event{pid: pid, mod: mod, fun: fun, arity: arity,
+           message: message, duration: duration}) do
+    collect = Collect.add_sample(
+      state.collect,
+      {pid, mod, fun, arity, message},
+      duration)
+    put_in(state.collect, collect)
+  end
+
   defp ts_to_ms({mega, seconds, us}) do
     (mega * 1_000_000 + seconds) * 1_000_000 + us # round(us/1000)
   end
 
+  defp aggreg_fun(:nil), do: nil
+  defp aggreg_fun(:max), do: &Enum.max/1
+  defp aggreg_fun(:mix), do: &Enum.min/1
+  defp aggreg_fun(:sum), do: &Enum.sum/1
+  defp aggreg_fun(:avg), do: fn list -> Enum.sum(list) / length(list) end
+  defp aggreg_fun(:dist), do: fn list ->
+    Enum.reduce(list, %{}, fn val, buckets ->
+      index = log_bucket(val)
+      Map.put(buckets, index, Map.get(buckets, index, 0) + 1)
+    end)
+  end
+  defp aggreg_fun(other) do
+    raise ArgumentError, message: "unsupported aggregation #{inspect other}"
+  end
+
+  defp log_bucket(x) do
+    # + 0.01 avoid 0 to trap
+    round(:math.pow(2, Float.floor(:math.log(x + 0.01) / :math.log(2))))
+  end
 end
