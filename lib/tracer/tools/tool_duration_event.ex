@@ -15,13 +15,13 @@ defmodule Tracer.Tool.Duration.Event do
     def to_string(%Event{duration: d} = event) when is_integer(d) do
       duration_str = String.pad_trailing(Integer.to_string(event.duration),
                                          20)
-      "\t#{duration_str} #{inspect event.pid} " <>
-        "#{inspect event.mod}.#{event.fun}/#{event.arity}" <>
+      "\t#{duration_str} " <>
+        (if event.pid == nil, do: "", else: inspect(event.pid)) <>
+        " #{inspect event.mod}.#{event.fun}/#{event.arity}" <>
         " #{message_to_string event.message}"
     end
     def to_string(event) do
-      header = "#{inspect event.pid} " <>
-        "#{inspect event.mod}.#{event.fun}/#{event.arity}" <>
+      header = "#{inspect event.mod}.#{event.fun}/#{event.arity}" <>
         " #{message_to_string event.message}\n"
         step = (event.duration |> Map.values |> Enum.max) / 41
       title = String.pad_leading("value", 15) <>

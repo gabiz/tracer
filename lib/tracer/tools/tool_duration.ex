@@ -95,10 +95,9 @@ defmodule Tracer.Tool.Duration do
   def handle_stop(state) do
     state.collect
     |> Collect.get_collections()
-    |> Enum.each(fn {{pid, mod, fun, arity, message}, value} ->
+    |> Enum.each(fn {{mod, fun, arity, message}, value} ->
       event = %Event{
           duration: state.aggregation.(value),
-          pid: pid,
           mod: mod,
           fun: fun,
           arity: arity,
@@ -120,7 +119,7 @@ defmodule Tracer.Tool.Duration do
            message: message, duration: duration}) do
     collect = Collect.add_sample(
       state.collect,
-      {pid, mod, fun, arity, message},
+      {mod, fun, arity, message},
       duration)
     put_in(state.collect, collect)
   end

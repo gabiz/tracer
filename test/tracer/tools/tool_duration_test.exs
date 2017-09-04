@@ -66,8 +66,8 @@ defmodule Tracer.Duration.Test do
     res = stop()
     assert res == :ok
 
-    assert_receive %Duration.Event{arity: 1, duration: %{}, fun: :new, message: [[:val, %{}]], mod: Map, pid: ^test_pid}
-    assert_receive %Duration.Event{arity: 1, duration: %{}, fun: :new, message: [[:val, %{a: :foo}]], mod: Map, pid: ^test_pid}
+    assert_receive %Duration.Event{arity: 1, duration: %{}, fun: :new, message: [[:val, %{}]], mod: Map, pid: nil}
+    assert_receive %Duration.Event{arity: 1, duration: %{}, fun: :new, message: [[:val, %{a: :foo}]], mod: Map, pid: nil}
     assert_receive {:done_tracing, :stop_command}
     # not expeting more events
     refute_receive(_)
