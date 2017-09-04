@@ -165,6 +165,7 @@ defmodule Tracer.Server.Test do
            message: [[:a, %{}]], pid: _, ts: _}
   end
 
+  @tag :timing
   test "trace with a count tool" do
     test_pid = self()
 
@@ -186,6 +187,7 @@ defmodule Tracer.Server.Test do
     String.split("z,y", ",")
     String.split("x,y", ",")
 
+    :timer.sleep(50)
     assert_receive :started_tracing
     res = Server.stop_tool()
     assert res == :ok
