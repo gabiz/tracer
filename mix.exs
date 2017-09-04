@@ -1,7 +1,7 @@
 defmodule Tracer.Mixfile do
   use Mix.Project
 
-  @version File.read!("VERSION") |> String.trim
+  @version File.read!("VERSION.md") |> String.trim
 
   def project do
     [app: :tracer,
