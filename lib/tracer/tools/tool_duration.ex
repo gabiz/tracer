@@ -115,7 +115,7 @@ defmodule Tracer.Tool.Duration do
     state
   end
   defp handle_aggregation_if_needed(state,
-    %Event{pid: pid, mod: mod, fun: fun, arity: arity,
+    %Event{mod: mod, fun: fun, arity: arity,
            message: message, duration: duration}) do
     collect = Collect.add_sample(
       state.collect,

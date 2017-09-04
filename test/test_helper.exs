@@ -1,1 +1,1 @@
-ExUnit.start(exclude: [:remote_node])
+ExUnit.start(exclude: [:remote_node, :timing])

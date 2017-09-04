@@ -24,6 +24,7 @@ defmodule Tracer.Tool.CallSeq.Test do
   def recur_len([], acc), do: acc
   def recur_len([_h | t], acc), do: recur_len(t, acc + 1)
 
+  @tag :timing
   test "CallSeq with start_mach module, show args" do
     test_pid = self()
 
@@ -65,6 +66,7 @@ defmodule Tracer.Tool.CallSeq.Test do
     refute_receive(_)
   end
 
+  @tag :timing
   test "CallSeq with start_mach fun, ignore_recursion" do
     test_pid = self()
 

@@ -124,10 +124,6 @@ defmodule Tracer.Server.Test do
                     max_message_count: 1)
     :ok = Server.start_tool(tool)
 
-    # :ok = Server.add_probe(probe)
-    # :ok = Server.start_trace(max_message_count: 1,
-    #                          display: [], forward_to: test_pid)
-
     :timer.sleep(50)
      Map.new(%{})
      assert_receive %Tracer.EventCall{mod: Map, fun: :new, arity: 1,
@@ -164,17 +160,9 @@ defmodule Tracer.Server.Test do
     tool = Tool.new(Display, nodes: [remote_node_a], forward_to: test_pid, probe: probe)
     :ok = Server.start_tool(tool)
 
-    # :ok = Server.add_probe(probe)
-    #
-    # :ok = Server.start_trace(nodes: remote_node_a,
-    #                          max_message_count: 1,
-    #                          display: [], forward_to: test_pid)
-
     :timer.sleep(500)
      assert_receive %Tracer.EventCall{mod: Map, fun: :new, arity: 1,
            message: [[:a, %{}]], pid: _, ts: _}
-
-    #  assert_receive {:done_tracing, :max_message_count, 1}
   end
 
   test "trace with a count tool" do
@@ -216,6 +204,7 @@ defmodule Tracer.Server.Test do
   def recur_len([], acc), do: acc
   def recur_len([_h | t], acc), do: recur_len(t, acc + 1)
 
+  @tag :timing
   test "trace with a duration tool" do
     test_pid = self()
 
@@ -246,6 +235,7 @@ defmodule Tracer.Server.Test do
     refute_receive(_)
   end
 
+  @tag :timing
   test "trace with a display tool" do
     test_pid = self()
 
@@ -301,6 +291,7 @@ defmodule Tracer.Server.Test do
     refute_receive(_)
   end
 
+  @tag :timing
   test "child servers are killed after trace finishes" do
     test_pid = self()
     {:ok, _} = Server.start()
@@ -327,6 +318,7 @@ defmodule Tracer.Server.Test do
     refute Process.alive?(tool_server_pid)
   end
 
+  @tag :timing
   test "child servers are killed after trace restartes" do
     test_pid = self()
     {:ok, _} = Server.start()

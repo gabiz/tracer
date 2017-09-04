@@ -17,6 +17,7 @@ defmodule Tracer.Test do
     :ok
   end
 
+  @tag :timing
   test "can add multiple probes" do
     {:ok, pid} = Tracer.start_server()
     assert Process.alive?(pid)
@@ -181,6 +182,7 @@ defmodule Tracer.Test do
     refute_receive(_)
   end
 
+  @tag :timing
   test "call_seq tool" do
     test_pid = self()
 

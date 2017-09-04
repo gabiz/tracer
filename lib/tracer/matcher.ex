@@ -149,9 +149,6 @@ defmodule Tracer.Matcher do
       |> Map.put(:desc, match_desc)
       |> Macro.escape(unquote: true)
     end
-    defmacro unquote(flag)(_) do
-      raise ArgumentError, message: "invalid args to matchspec"
-    end
   end)
 
   defmacrop is_literal(term) do
