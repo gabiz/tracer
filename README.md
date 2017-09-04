@@ -1,6 +1,8 @@
 # Tracer
 
-**TODO: Add description**
+[![Build Status](https://api.travis-ci.org/gabiz/tracer.svg)](https://travis-ci.org/gabiz/tracer)
+
+**Elixir Tracing Framework**
 
 ## Installation
 
@@ -16,4 +18,3 @@ end
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/tracer](https://hexdocs.pm/tracer).
-

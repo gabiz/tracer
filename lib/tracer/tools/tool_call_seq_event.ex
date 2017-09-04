@@ -27,15 +27,15 @@ defmodule Tracer.Tool.CallSeq.Event do
         else: safe_inspect(event.return_value, event.depth + 5)
     end
 
-    defp message_to_string(nil, _depth), do: ""
-    defp message_to_string(term, depth) when is_list(term) do
-      term
-      |> Enum.map(fn
-        [key, val] -> {key, val}
-        other -> "#{inspect other}"
-      end)
-      |> safe_inspect(depth)
-    end
+    # defp message_to_string(nil, _depth), do: ""
+    # defp message_to_string(term, depth) when is_list(term) do
+    #   term
+    #   |> Enum.map(fn
+    #     [key, val] -> {key, val}
+    #     other -> "#{inspect other}"
+    #   end)
+    #   |> safe_inspect(depth)
+    # end
 
     # borrowed from https://github.com/fishcakez/dbg
     def safe_inspect(term, depth) do
