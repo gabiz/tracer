@@ -14,11 +14,12 @@ defmodule Tracer.Tool.Count do
     case Keyword.get(opts, :match) do
       nil -> init_state
       matcher ->
+        node = Keyword.get(opts, :nodes)
         process = init_state
         |> get_process()
-        |> ProcessHelper.ensure_pid()
+        |> ProcessHelper.ensure_pid(node)
 
-        all_child = ProcessHelper.find_all_children(process)
+        all_child = ProcessHelper.find_all_children(process, node)
         probe_call = Probe.new(type: :call,
                                process: [process | all_child],
                                match: matcher)

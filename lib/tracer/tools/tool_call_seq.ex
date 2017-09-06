@@ -53,11 +53,13 @@ defmodule Tracer.Tool.CallSeq do
     else
       local do _ -> return_trace() end
     end
+
+    node = Keyword.get(opts, :nodes)
     process = init_state
     |> get_process()
-    |> ProcessHelper.ensure_pid()
+    |> ProcessHelper.ensure_pid(node)
 
-    all_child = ProcessHelper.find_all_children(process)
+    all_child = ProcessHelper.find_all_children(process, node)
     probe_call = Probe.new(type: :call,
                            process: [process | all_child],
                            match: match_spec)

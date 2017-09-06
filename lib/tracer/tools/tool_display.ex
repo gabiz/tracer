@@ -3,7 +3,7 @@ defmodule Tracer.Tool.Display do
   Reports display type tracing
   """
   alias __MODULE__
-  alias Tracer.Probe
+  alias Tracer.{Probe, ProcessHelper}
   use Tracer.Tool
 
   defstruct []
@@ -14,9 +14,15 @@ defmodule Tracer.Tool.Display do
     case Keyword.get(opts, :match) do
       nil -> init_state
       matcher ->
+        node = Keyword.get(opts, :nodes)
+        process = init_state
+        |> get_process()
+        |> ProcessHelper.ensure_pid(node)
+
+        all_child = ProcessHelper.find_all_children(process, node)
         type = Keyword.get(opts, :type, :call)
         probe = Probe.new(type: type,
-                          process: get_process(init_state),
+                          process: [process | all_child],
                           match: matcher)
         set_probes(init_state, [probe])
     end

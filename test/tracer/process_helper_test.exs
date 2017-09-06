@@ -46,4 +46,101 @@ defmodule Tracer.ProcessHelper.Test do
     assert length(res) == 5
   end
 
+  test "ensure_pid() works on other node" do
+    :net_kernel.start([:"local2@127.0.0.1"])
+
+    remote_node = "remote#{Enum.random(1..100)}@127.0.0.1"
+    remote_node_a = String.to_atom(remote_node)
+    spawn(fn ->
+        System.cmd("elixir", ["--name", remote_node,
+            "-e", "Process.register(self(), Foo); :timer.sleep(1000)"])
+    end)
+
+    :timer.sleep(500)
+    # check if remote node is up
+    case :net_adm.ping(remote_node_a) do
+      :pang ->
+        assert false
+      :pong -> :ok
+    end
+
+    pid = ProcessHelper.ensure_pid(Foo, remote_node_a)
+    assert is_pid(pid)
+    assert node(pid) == remote_node_a
+  end
+
+  test "type() works on other node" do
+    :net_kernel.start([:"local2@127.0.0.1"])
+
+    remote_node = "remote#{Enum.random(1..100)}@127.0.0.1"
+    remote_node_a = String.to_atom(remote_node)
+    spawn(fn ->
+        System.cmd("elixir", ["--name", remote_node,
+            "-e", ":timer.sleep(1000)"])
+    end)
+
+    :timer.sleep(500)
+    # check if remote node is up
+    case :net_adm.ping(remote_node_a) do
+      :pang ->
+        assert false
+      :pong -> :ok
+    end
+
+    pid = ProcessHelper.ensure_pid(Logger.Supervisor, remote_node_a)
+    assert is_pid(pid)
+    assert node(pid) == remote_node_a
+    type = ProcessHelper.type(pid, remote_node_a)
+    assert type == :supervisor
+  end
+
+  test "find_children() for supervisor processes on remote node" do
+    :net_kernel.start([:"local2@127.0.0.1"])
+
+    remote_node = "remote#{Enum.random(1..100)}@127.0.0.1"
+    remote_node_a = String.to_atom(remote_node)
+    spawn(fn ->
+        System.cmd("elixir", ["--name", remote_node,
+            "-e", ":timer.sleep(1000)"])
+    end)
+
+    :timer.sleep(500)
+    # check if remote node is up
+    case :net_adm.ping(remote_node_a) do
+      :pang ->
+        assert false
+      :pong -> :ok
+    end
+
+    res = ProcessHelper.find_children(Logger.Supervisor, remote_node_a)
+    assert length(res) == 4
+    Enum.each(res, fn pid ->
+      assert node(pid) == remote_node_a
+    end)
+  end
+
+  test "find_all_children() for supervisor processes on remote node" do
+    :net_kernel.start([:"local2@127.0.0.1"])
+
+    remote_node = "remote#{Enum.random(1..100)}@127.0.0.1"
+    remote_node_a = String.to_atom(remote_node)
+    spawn(fn ->
+        System.cmd("elixir", ["--name", remote_node,
+            "-e", ":timer.sleep(1000)"])
+    end)
+
+    :timer.sleep(500)
+    # check if remote node is up
+    case :net_adm.ping(remote_node_a) do
+      :pang ->
+        assert false
+      :pong -> :ok
+    end
+
+    res = ProcessHelper.find_all_children(Logger.Supervisor, remote_node_a)
+    assert length(res) == 5
+    Enum.each(res, fn pid ->
+      assert node(pid) == remote_node_a
+    end)
+  end
 end
