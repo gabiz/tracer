@@ -46,6 +46,7 @@ defmodule Tracer.ProcessHelper.Test do
     assert length(res) == 5
   end
 
+  @tag :remote_node
   test "ensure_pid() works on other node" do
     :net_kernel.start([:"local2@127.0.0.1"])
 
@@ -69,6 +70,7 @@ defmodule Tracer.ProcessHelper.Test do
     assert node(pid) == remote_node_a
   end
 
+  @tag :remote_node
   test "type() works on other node" do
     :net_kernel.start([:"local2@127.0.0.1"])
 
@@ -94,6 +96,7 @@ defmodule Tracer.ProcessHelper.Test do
     assert type == :supervisor
   end
 
+  @tag :remote_node
   test "find_children() for supervisor processes on remote node" do
     :net_kernel.start([:"local2@127.0.0.1"])
 
@@ -119,6 +122,7 @@ defmodule Tracer.ProcessHelper.Test do
     end)
   end
 
+  @tag :remote_node
   test "find_all_children() for supervisor processes on remote node" do
     :net_kernel.start([:"local2@127.0.0.1"])
 
