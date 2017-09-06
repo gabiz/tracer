@@ -54,7 +54,7 @@ defmodule Tracer.Tool.CallSeq do
       local do _ -> return_trace() end
     end
 
-    node = Keyword.get(opts, :nodes)
+    node = Keyword.get(opts, :node)
     process = init_state
     |> get_process()
     |> ProcessHelper.ensure_pid(node)

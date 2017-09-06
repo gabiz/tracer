@@ -66,7 +66,7 @@ defmodule Tracer.Tool.Test do
                           max_message_count: 777,
                           max_queue_size: 2000,
                           max_tracing_time: 10_000,
-                          nodes: [:"local@127,0.0,1", :"remote@127.0.0.1"],
+                          node: [:"local@127,0.0,1", :"remote@127.0.0.1"],
                           probes: [Probe.new(type: :call, process: self())],
                           probe: Probe.new(type: :procs, process: self()),
                           other_keys: "foo"
@@ -79,7 +79,7 @@ defmodule Tracer.Tool.Test do
         max_message_count: 777,
         max_queue_size: 2000,
         max_tracing_time: 10_000,
-        nodes: [:"local@127,0.0,1", :"remote@127.0.0.1"],
+        node: [:"local@127,0.0,1", :"remote@127.0.0.1"],
       ],
       probes: [Probe.new(type: :call, process: self()),
                Probe.new(type: :procs, process: self())]

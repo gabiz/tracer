@@ -29,7 +29,7 @@ defmodule Tracer.Tool.Duration do
         end)
         matcher = put_in(matcher.ms, ms_with_return_trace)
 
-        node = Keyword.get(opts, :nodes)
+        node = Keyword.get(opts, :node)
         process = init_state
         |> get_process()
         |> ProcessHelper.ensure_pid(node)

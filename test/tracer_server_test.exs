@@ -157,7 +157,7 @@ defmodule Tracer.Server.Test do
                       process: :all,
                       match: local do Map.new(a) -> message(a) end)
 
-    tool = Tool.new(Display, nodes: [remote_node_a], forward_to: test_pid, probe: probe)
+    tool = Tool.new(Display, node: [remote_node_a], forward_to: test_pid, probe: probe)
     :ok = Server.start_tool(tool)
 
     :timer.sleep(500)

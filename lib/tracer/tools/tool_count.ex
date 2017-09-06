@@ -14,7 +14,7 @@ defmodule Tracer.Tool.Count do
     case Keyword.get(opts, :match) do
       nil -> init_state
       matcher ->
-        node = Keyword.get(opts, :nodes)
+        node = Keyword.get(opts, :node)
         process = init_state
         |> get_process()
         |> ProcessHelper.ensure_pid(node)

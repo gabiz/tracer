@@ -12,7 +12,7 @@ defmodule Tracer.Server do
             tracing: false,
             forward_pid: nil,
             probes: [],
-            nodes: nil,
+            node: nil,
             agent_pids: [],
             tool: nil
 
@@ -91,8 +91,8 @@ defmodule Tracer.Server do
       |> Map.put(:tool_server_pid, ret)
 
       agent_opts = Tool.get_agent_opts(tool)
-      nodes = Keyword.get(agent_opts, :nodes, state.nodes)
-      {ret, new_state} = case AgentCmds.start(nodes,
+      node = Keyword.get(agent_opts, :node, state.node)
+      {ret, new_state} = case AgentCmds.start(node,
                                            state.probes,
                                            [forward_pid: state.tool_server_pid]
                                               ++ agent_opts) do
@@ -101,7 +101,7 @@ defmodule Tracer.Server do
         agent_pids ->
           new_state = state
           |> Map.put(:agent_pids, agent_pids)
-          |> Map.put(:nodes, nodes)
+          |> Map.put(:node, node)
           |> Map.put(:tracing, true)
           # TODO get a notification from agents
           :timer.sleep(5)
@@ -184,7 +184,7 @@ defmodule Tracer.Server do
       _ ->
         new_state = state
         |> Map.put(:agent_pids, [])
-        |> Map.put(:nodes, nil)
+        |> Map.put(:node, nil)
         |> Map.put(:tracing, false)
         {:ok, new_state}
     end
