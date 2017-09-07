@@ -1,6 +1,5 @@
 defmodule Tracer.Test do
   use ExUnit.Case
-  doctest Tracer
 
   import Tracer
   import Tracer.Matcher

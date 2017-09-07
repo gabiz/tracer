@@ -14,21 +14,28 @@ defmodule Tracer do
                            to the display.
   ## Examples
     ```
-    iex(1)> run Count, process: self(), match: global String.split(string, pattern)
-    started tracing
+    iex> run Count, process: self(), match: global String.split(string, pattern)
     :ok
-    iex(2)> String.split("Hello World", " ")
+
+    iex> String.split("Hello World", " ")
     ["Hello", "World"]
-    iex(3)> String.split("Hello World", " ")
+
+    iex> String.split("Hello World", " ")
     ["Hello", "World"]
-    iex(4)> String.split("Hello World", "o")
+
+    iex String.split("Hello World", "o")
     ["Hell", " W", "rld"]
-    iex(5)> String.split("Hello", "o")
+
+    iex> String.split("Hello", "o")
     ["Hell", ""]
-    iex(6)> done tracing: tracing_timeout 30000
+
+    iex> stop
+    :ok
+
             1              [string:"Hello World", pattern:"o"]
             1              [string:"Hello"      , pattern:"o" ]
             2              [string:"Hello World", pattern:" "]
+  ```
   """
   alias Tracer.{Server, Probe, Tool}
   import Tracer.Macros
@@ -72,18 +79,24 @@ defmodule Tracer do
                            to the display.
   ## Examples
     ```
-    iex(1)> run Count, process: self(), match: global String.split(string, pattern)
-    started tracing
+    iex> run Count, process: self(), match: global String.split(string, pattern)
     :ok
-    iex(2)> String.split("Hello World", " ")
+
+    iex> String.split("Hello World", " ")
     ["Hello", "World"]
-    iex(3)> String.split("Hello World", " ")
+
+    iex> String.split("Hello World", " ")
     ["Hello", "World"]
-    iex(4)> String.split("Hello World", "o")
+
+    iex> String.split("Hello World", "o")
     ["Hell", " W", "rld"]
-    iex(5)> String.split("Hello", "o")
+
+    iex> String.split("Hello", "o")
     ["Hell", ""]
-    iex(6)> done tracing: tracing_timeout 30000
+
+    iex> stop
+    :ok
+
             1              [string:"Hello World", pattern:"o"]
             1              [string:"Hello"      , pattern:"o" ]
             2              [string:"Hello World", pattern:" "]
