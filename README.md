@@ -136,4 +136,6 @@ iex(18)> stop
 done tracing: :stop_command
 ```
 
+[Click for interactive SVG Flame Graph](https://www.dropbox.com/s/1syff44ff8r14uo/flame_graph.svg?dl=0)
+
 ![FlameGraph](./flame_graph.svg)
