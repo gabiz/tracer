@@ -18,13 +18,13 @@ defmodule Tracer.Tool.CallSeq.Event do
       String.duplicate(" ", event.depth) <>
         "-> #{inspect event.mod}.#{event.fun}/#{event.arity} " <>
         if is_nil(event.message), do: "",
-        else: safe_inspect(event.message, event.depth + 5)
+      else: List.to_string(safe_inspect(event.message, event.depth + 5))
     end
     def to_string(%Event{type: :exit} = event) do
       String.duplicate(" ", event.depth) <>
         "<- #{inspect event.mod}.#{event.fun}/#{event.arity} " <>
         if is_nil(event.return_value), do: "",
-        else: safe_inspect(event.return_value, event.depth + 5)
+      else: List.to_string(safe_inspect(event.return_value, event.depth + 5))
     end
 
     # defp message_to_string(nil, _depth), do: ""

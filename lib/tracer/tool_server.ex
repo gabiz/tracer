@@ -58,7 +58,8 @@ defmodule Tracer.ToolServer do
       {:trace_ts, pid, :return_to, {m, f, a}, ts} ->
         %EventReturnTo{mod: m, fun: f, arity: a, pid: pid, ts: ts}
       {:trace_ts, pid, :return_to, :undefined, ts} ->
-        %EventReturnTo{mod: :undefined, fun: :undefined, arity: 0, pid: pid, ts: ts}
+        %EventReturnTo{mod: :undefined, fun: :undefined, arity: 0,
+                       pid: pid, ts: ts}
       {:trace_ts, pid, :in, {m, f, a}, ts} ->
         %EventIn{mod: m, fun: f, arity: a, pid: pid, ts: ts}
       {:trace_ts, pid, :out, {m, f, a}, ts} ->

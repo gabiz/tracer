@@ -38,7 +38,7 @@ defmodule Tracer.Tool.FlameGraph do
     probe_call = Probe.new(type: :call,
                            process: process,
                            match: local _)
-    |> Probe.return_to(true)
+    probe_call = Probe.return_to(probe_call, true)
 
     probe_spawn = Probe.new(type: :set_on_spawn,
                             process: process)
@@ -121,7 +121,6 @@ defmodule Tracer.Tool.FlameGraph do
     {:ok, file} = File.open("/tmp/flame_graph.txt", [:write])
     IO.write file, stack_list
     File.close(file)
-    # System.cmd("/Users/gabiz/Desktop/Root/ElixirConf-2017/tracer/scripts/gen_flame_graph.sh", ["/tmp/flame_graph.txt", state.file_name])
     System.cmd(@flame_graph_script, ["/tmp/flame_graph.txt", state.file_name])
     state
   end
