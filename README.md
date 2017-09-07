@@ -1,8 +1,6 @@
-# Tracer
+# Tracer - Elixir Tracing Framework
 
 [![Build Status](https://api.travis-ci.org/gabiz/tracer.svg)](https://travis-ci.org/gabiz/tracer)
-
-**Elixir Tracing Framework**
 
 **Tracer** is a tracing framework for elixir which features an easy to use high level interface, extensibility and safety for using in production.
 
@@ -136,6 +134,7 @@ iex(18)> stop
 done tracing: :stop_command
 ```
 
-[Click for interactive SVG Flame Graph](https://www.dropbox.com/s/1syff44ff8r14uo/flame_graph.svg?dl=0)
+[Click for interactive SVG Flame Graph](https://s3.amazonaws.com/gapix/flame_graph.svg)
 
-![FlameGraph](./flame_graph.svg)
+![FlameGraph](https://s3.amazonaws.com/gapix/flame_graph.svg?sanitize=true)
+<img src="https://s3.amazonaws.com/gapix/flame_graph.svg?sanitize=true">
