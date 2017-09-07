@@ -9,7 +9,7 @@ defmodule Tracer do
       import Tracer
       import Tracer.Matcher
       alias Tracer.{Tool, Probe, Clause}
-      alias Tracer.Tool.{Display, Count, CallSeq, Duration}
+      alias Tracer.Tool.{Display, Count, CallSeq, Duration, FlameGraph}
       :ok
     end
   end

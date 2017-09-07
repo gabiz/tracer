@@ -95,3 +95,43 @@ defmodule Tracer.EventReturnFrom do
     end
   end
 end
+
+defmodule Tracer.EventIn do
+  @moduledoc """
+  Defines an in event
+  """
+  alias Tracer.Event
+
+  defstruct mod: nil, fun: nil, arity: nil,
+            pid: nil,
+            ts: nil
+
+  def tag, do: :in
+
+  defimpl String.Chars, for: Tracer.EventIn do
+    def to_string(event) do
+      "#{Event.format_ts event.ts}: #{inspect event.pid} In " <>
+        "#{inspect event.mod}.#{inspect event.fun}/#{inspect event.arity} "
+    end
+  end
+end
+
+defmodule Tracer.EventOut do
+  @moduledoc """
+  Defines an out event
+  """
+  alias Tracer.Event
+
+  defstruct mod: nil, fun: nil, arity: nil,
+            pid: nil,
+            ts: nil
+
+  def tag, do: :out
+
+  defimpl String.Chars, for: Tracer.EventOut do
+    def to_string(event) do
+      "#{Event.format_ts event.ts}: #{inspect event.pid} Out " <>
+        "#{inspect event.mod}.#{inspect event.fun}/#{inspect event.arity} "
+    end
+  end
+end

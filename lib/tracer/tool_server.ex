@@ -6,7 +6,7 @@ defmodule Tracer.ToolServer do
 
   alias __MODULE__
   alias Tracer.{Event, EventCall, EventReturnTo, EventReturnFrom,
-                Tool}
+                EventIn, EventOut, Tool}
 
   defstruct tool_type: nil,
             tool_state: nil
@@ -57,6 +57,12 @@ defmodule Tracer.ToolServer do
           return_value: ret, ts: ts}
       {:trace_ts, pid, :return_to, {m, f, a}, ts} ->
         %EventReturnTo{mod: m, fun: f, arity: a, pid: pid, ts: ts}
+      {:trace_ts, pid, :return_to, :undefined, ts} ->
+        %EventReturnTo{mod: :undefined, fun: :undefined, arity: 0, pid: pid, ts: ts}
+      {:trace_ts, pid, :in, {m, f, a}, ts} ->
+        %EventIn{mod: m, fun: f, arity: a, pid: pid, ts: ts}
+      {:trace_ts, pid, :out, {m, f, a}, ts} ->
+        %EventOut{mod: m, fun: f, arity: a, pid: pid, ts: ts}
       {:trace, pid, :call, {m, f, a}, [message]} ->
         %EventCall{mod: m, fun: f, arity: a, pid: pid, message: message,
           ts: now()}
@@ -67,6 +73,10 @@ defmodule Tracer.ToolServer do
           return_value: ret, ts: now()}
       {:trace, pid, :return_to, {m, f, a}} ->
         %EventReturnTo{mod: m, fun: f, arity: a, pid: pid, ts: now()}
+      {:trace, pid, :in, {m, f, a}} ->
+        %EventIn{mod: m, fun: f, arity: a, pid: pid, ts: now()}
+      {:trace, pid, :out, {m, f, a}} ->
+        %EventOut{mod: m, fun: f, arity: a, pid: pid, ts: now()}
       _other ->
         %Event{event: trace_event}
     end

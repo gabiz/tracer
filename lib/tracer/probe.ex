@@ -183,7 +183,7 @@ defmodule Tracer.Probe do
     end
   end
 
-  [:arity, :timestamp] |> Enum.each(fn flag ->
+  [:arity, :timestamp, :return_to] |> Enum.each(fn flag ->
     def unquote(flag)(probe, enable) when is_boolean(enable) do
       if probe.type == :call do
         flag(probe, unquote(flag), enable)
