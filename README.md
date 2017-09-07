@@ -90,6 +90,9 @@ iex(5)> stop
 done tracing: :stop_command
 ```
 
+Use `aggregation` option to collect all the duration samples and return you a combined result.
+`aggregation:` option can be one of `:sum`, `:avg`, `:min`, `:max`, `:dist`
+
 ## Call Sequence Tool Example
 
 ```elixir
@@ -137,3 +140,51 @@ done tracing: :stop_command
 [Click here (not image) for interactive SVG Flame Graph](https://s3.amazonaws.com/gapix/flame_graph.svg)
 
 ![FlameGraph](https://s3.amazonaws.com/gapix/flame_graph.svg?sanitize=true)
+
+## Building your own Tool
+
+Tools have a similar structure like GenServers.
+
+```elixir
+defmodule MyTool do
+  alias __MODULE__
+  alias Tracer.Probe
+  use Tracer.Tool
+
+  # store your tool's state
+  defstruct []
+
+  def init(opts) do
+    # init_tool initializes the tool
+    init_state = init_tool(%MyTool{}, opts, [:match])
+
+    case Keyword.get(opts, :match) do
+      nil -> init_state
+      matcher ->
+        type = Keyword.get(opts, :type, :call)
+        probe = Probe.new(type: type,
+                          process: get_process,
+                          match: matcher)
+        set_probes(init_state, [probe])
+    end
+  end
+
+  # Called when the tool run starts
+  def handle_start(event, state) do
+    state
+  end
+
+  # Called when a trace event triggers
+  def handle_event(event, state) do
+    # report event will call to_string(event) to format
+    # your event, so you can create your own events
+    report_event(state, event)
+    state
+  end
+
+  # Called when the tool run completes
+  def handle_end(event, state) do
+    state
+  end
+end
+```

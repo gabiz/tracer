@@ -1,6 +1,34 @@
 defmodule Tracer do
   @moduledoc """
-  Tracer API
+  **Tracer** is a tracing framework for elixir which features an easy to use high level interface, extensibility and safety for using in production.
+
+  To run a tool use the `run` command. Tracing only happens when the tool is running.
+  All tools accept the following parameters:
+    * `node: node_name` - Option to run the tool remotely.
+    * `max_tracing_time: time` - Maximum time to run tool (30sec).
+    * `max_message_count: count` - Maximum number of events (1000)
+    * `max_queue_size: size` - Maximum message queue size (1000)
+    * `process: pid` - Process to trace, also accepts regigered names,
+                       and :all, :existing, :new
+    * `forward_pid: pid` - Forward results as messages insted of printing
+                           to the display.
+  ## Examples
+    ```
+    iex(1)> run Count, process: self(), match: global String.split(string, pattern)
+    started tracing
+    :ok
+    iex(2)> String.split("Hello World", " ")
+    ["Hello", "World"]
+    iex(3)> String.split("Hello World", " ")
+    ["Hello", "World"]
+    iex(4)> String.split("Hello World", "o")
+    ["Hell", " W", "rld"]
+    iex(5)> String.split("Hello", "o")
+    ["Hell", ""]
+    iex(6)> done tracing: tracing_timeout 30000
+            1              [string:"Hello World", pattern:"o"]
+            1              [string:"Hello"      , pattern:"o" ]
+            2              [string:"Hello World", pattern:" "]
   """
   alias Tracer.{Server, Probe, Tool}
   import Tracer.Macros
@@ -31,11 +59,41 @@ defmodule Tracer do
     Tool.new(type, params)
   end
 
+  @doc """
+  Runs a tool. Tracing only happens when the tool is running.
+    * `tool_name` - The name of the tool that want to run.
+    * `node: node_name` - Option to run the tool remotely.
+    * `max_tracing_time: time` - Maximum time to run tool (30sec).
+    * `max_message_count: count` - Maximum number of events (1000)
+    * `max_queue_size: size` - Maximum message queue size (1000)
+    * `process: pid` - Process to trace, also accepts regigered names,
+                       and :all, :existing, :new
+    * `forward_pid: pid` - Forward results as messages insted of printing
+                           to the display.
+  ## Examples
+    ```
+    iex(1)> run Count, process: self(), match: global String.split(string, pattern)
+    started tracing
+    :ok
+    iex(2)> String.split("Hello World", " ")
+    ["Hello", "World"]
+    iex(3)> String.split("Hello World", " ")
+    ["Hello", "World"]
+    iex(4)> String.split("Hello World", "o")
+    ["Hell", " W", "rld"]
+    iex(5)> String.split("Hello", "o")
+    ["Hell", ""]
+    iex(6)> done tracing: tracing_timeout 30000
+            1              [string:"Hello World", pattern:"o"]
+            1              [string:"Hello"      , pattern:"o" ]
+            2              [string:"Hello World", pattern:" "]
+    ```
+  """
   def run(%{"__tool__": _} = tool) do
     Server.start_tool(tool)
   end
-  def run(type, params) do
-    Server.start_tool(tool(type, params))
+  def run(tool_name, params) do
+    Server.start_tool(tool(tool_name, params))
   end
 
 end
