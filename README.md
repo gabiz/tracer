@@ -11,7 +11,7 @@ If you need to integrate **Tracer** to your project, then you can install it fro
 
 ```elixir
 def deps do
-  [{:tracer, "~> 0.1.0"}]
+  [{:tracer, "~> 0.1.1"}]
 end
 ```
 
