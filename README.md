@@ -139,7 +139,7 @@ done tracing: :stop_command
 
 [Click here (not image) for interactive SVG Flame Graph](https://s3.amazonaws.com/gapix/flame_graph.svg)
 
-![FlameGraph](https://s3.amazonaws.com/gapix/flame_graph.svg?sanitize=true)
+![Flame Graph](https://s3.amazonaws.com/gapix/flame_graph.svg?sanitize=true)
 
 ## Building your own Tool
 

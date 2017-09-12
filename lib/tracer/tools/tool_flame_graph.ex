@@ -116,6 +116,7 @@ defmodule Tracer.Tool.FlameGraph do
                |> collapse_stacks()
                |> filter_below_resolution(state.resolution)
                |> format_with_pid(pid)
+               |> Enum.sort
              end)
 
     {:ok, file} = File.open("/tmp/flame_graph.txt", [:write])
