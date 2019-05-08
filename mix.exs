@@ -38,7 +38,7 @@ defmodule Tracer.Mixfile do
   end
 
   defp package do
-    [files: ~w(lib test mix.exs README.md LICENSE.md VERSION.md),
+    [files: ~w(lib test scripts mix.exs README.md LICENSE.md VERSION.md),
      maintainers: ["Gabi Zuniga"],
      licenses: ["MIT"],
      links: %{"GitHub" => "https://github.com/gabiz/tracer"}]
